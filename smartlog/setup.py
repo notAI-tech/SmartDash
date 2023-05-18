@@ -12,7 +12,7 @@ from shutil import rmtree
 from setuptools import find_packages, setup, Command
 
 # Package meta-data.
-NAME = "smartlog"
+NAME = "smartlogger"
 DESCRIPTION = "python logging client for SmartDash"
 URL = "https://github.com/notAI-tech/smartdash"
 EMAIL = "praneeth@bpraneeth.com"
@@ -106,7 +106,7 @@ setup(
     packages=find_packages(exclude=("tests",)),
     # If your package is a single module, use this instead of 'packages':
     # py_modules=['mypackage'],
-    entry_points={"console_scripts": ["smartlog=smartlog:main"]},
+    entry_points={"console_scripts": ["smartlogger=smartlogger:main"]},
     install_requires=REQUIRED,
     extras_require=EXTRAS,
     include_package_data=True,
