@@ -25,7 +25,7 @@ class AddLogs(object):
         resp.media = {"success": True, "id": id}
         resp.status = falcon.HTTP_200
     def on_get(self, req, resp):
-        from_time = time.time() - (req.params.get("last_n_hours", 8) * 60 * 60)
+        from_time = time.time() - (int(req.params.get("last_n_hours", 8)) * 60 * 60)
 
         app_name = req.params["app_name"]
 
@@ -43,7 +43,7 @@ class AddTimers(object):
         resp.media = {"success": True, "id": id}
         resp.status = falcon.HTTP_200
     def on_get(self, req, resp):
-        from_time = time.time() - (req.params.get("last_n_hours", 8) * 60 * 60)
+        from_time = time.time() - (int(req.params.get("last_n_hours", 8)) * 60 * 60)
 
         app_name = req.params["app_name"]
 
@@ -60,7 +60,7 @@ class AddMLInputsOutputs(object):
         resp.media = {"success": True, "id": id}
         resp.status = falcon.HTTP_200
     def on_get(self, req, resp):
-        from_time = time.time() - (req.params.get("last_n_hours", 8) * 60 * 60)
+        from_time = time.time() - (int(req.params.get("last_n_hours", 8)) * 60 * 60)
 
         app_name = req.params["app_name"]
 
