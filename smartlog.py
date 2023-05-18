@@ -19,20 +19,20 @@ def upload_to_smartdash(name, log_dir, url, batch_size=100):
             keys = []
 
             for k, v in index.search(n=batch_size):
+                v["app_name"] = name
                 batch.append(v)
                 keys.append(k)
             
             if batch:
                 try:
+                    resp = requests.post(f"{url}/{index_type}", json=batch).json()
                     if (
-                        not requests.post(f"{url}/{index_type}", json=batch).json()[
-                            "success"
-                        ]
-                        == True
+                        not resp["success"] == True
                     ):
                         1 / 0
                     
                     index.delete(keys)
+                    print(name, index_type, db_prefix, resp, len(keys))
                     backoff_time = 1  # reset backoff time on successful request
                 except:
                     backoff_time = min(
@@ -140,11 +140,16 @@ if __name__ == "__main__":
         def create_some_log(pipeline_timer):
             u_id = str(uuid.uuid4())
             pipeline_timer.start(id=u_id)
-            time.sleep(random.randint(1000, 2000)/1000)
+            time.sleep(random.randint(100, 600)/1000)
             pipeline_timer.stage_success(id=u_id, name="pre_processing")
-            time.sleep(random.randint(1000, 2000)/1000)
-            pipeline_timer.stage_failed(id=u_id, name="feature_extraction")
-            time.sleep(random.randint(1000, 2000)/1000)
+            time.sleep(random.randint(100, 600)/1000)
+            
+            if random.choice([0, 1, 2, 3, 4]) == 3:
+                pipeline_timer.stage_failed(id=u_id, name="feature_extraction")
+            else:
+                pipeline_timer.stage_success(id=u_id, name="feature_extraction")
+
+            time.sleep(random.randint(100, 600)/1000)
             pipeline_timer.finished(id=u_id)
 
             pipeline_logger = PipelineLogger("analytics")

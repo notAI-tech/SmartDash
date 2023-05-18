@@ -21,8 +21,8 @@ ML_INPUTS_OUTPUTS_INDEX = DefinedIndex("ml_inputs_outputs_index", {"app_name": "
 class AddLogs(object):
     def on_post(self, req, resp):
         data = req.media
-        LOG_INDEX.add(data)
-        resp.media = {"success": True}
+        id = LOG_INDEX.add(data)
+        resp.media = {"success": True, "id": id}
         resp.status = falcon.HTTP_200
     def on_get(self, req, resp):
         from_time = time.time() - (req.params.get("last_n_hours", 8) * 60 * 60)
@@ -30,7 +30,7 @@ class AddLogs(object):
         app_name = req.params["app_name"]
 
         logs = []
-        for _, log_data in LOG_INDEX.search(query={"app_name": app_name, "timestamp": {"$gt": from_time}}, sort_by="datetime", reversed_sort=True, page=1):
+        for _, log_data in LOG_INDEX.search(query={"app_name": app_name, "timestamp": {"$gt": from_time}}, sort_by="timestamp", reversed_sort=True, page=1):
             logs.append(log_data)
             if len(logs) >= count:
                 break
@@ -40,8 +40,8 @@ class AddLogs(object):
 class AddTimers(object):
     def on_post(self, req, resp):
         data = req.media
-        TIMERS_INDEX.add(data)
-        resp.media = {"success": True}
+        id = TIMERS_INDEX.add(data)
+        resp.media = {"success": True, "id": id}
         resp.status = falcon.HTTP_200
     def on_get(self, req, resp):
         from_time = time.time() - (req.params.get("last_n_hours", 8) * 60 * 60)
@@ -49,7 +49,7 @@ class AddTimers(object):
         app_name = req.params["app_name"]
 
         logs = []
-        for _, log_data in TIMERS_INDEX.search(query={"app_name": app_name, "timestamp": {"$gt": from_time}}, sort_by="datetime", reversed_sort=True, page=1):
+        for _, log_data in TIMERS_INDEX.search(query={"app_name": app_name, "timestamp": {"$gt": from_time}}, sort_by="timestamp", reversed_sort=True, page=1):
             logs.append(log_data)
             if len(logs) >= count:
                 break
@@ -59,8 +59,8 @@ class AddTimers(object):
 class AddMLInputsOutputs(object):
     def on_post(self, req, resp):
         data = req.media
-        ML_INPUTS_OUTPUTS_INDEX.add(data)
-        resp.media = {"success": True}
+        id = ML_INPUTS_OUTPUTS_INDEX.add(data)
+        resp.media = {"success": True, "id": id}
         resp.status = falcon.HTTP_200
     def on_get(self, req, resp):
         from_time = time.time() - (req.params.get("last_n_hours", 8) * 60 * 60)
@@ -68,7 +68,7 @@ class AddMLInputsOutputs(object):
         app_name = req.params["app_name"]
 
         logs = []
-        for _, log_data in ML_INPUTS_OUTPUTS_INDEX.search(query={"app_name": app_name, "timestamp": {"$gt": from_time}}, sort_by="datetime", reversed_sort=True, page=1):
+        for _, log_data in ML_INPUTS_OUTPUTS_INDEX.search(query={"app_name": app_name, "timestamp": {"$gt": from_time}}, sort_by="timestamp", reversed_sort=True, page=1):
             logs.append(log_data)
             if len(logs) >= count:
                 break
