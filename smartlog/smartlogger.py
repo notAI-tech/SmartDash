@@ -6,13 +6,24 @@ import logging
 from liteindex import DefinedIndex
 
 def upload_to_smartdash(name, log_dir, url, batch_size=100):
+    import argparse
     import requests
 
+    parser = argparse.ArgumentParser(description="Smartlogger sync service")
+    parser.add_argument("--name", type=str, help="name, given at log or timer initialization time.", required=True)
+    parser.add_argument("--save_dir", type=str, help="Directory to save logs", required=True)
+    parser.add_argument("--smartdash_url", type=str, help="Smartdash server URL", required=True)
+    args = parser.parse_args()
+
+
     def upload_data(name, index_type, db_prefix):
-        index = DefinedIndex(f"{name}_{index_type}", db_path=os.path.join(log_dir, f"{name}_{db_prefix}.db"))
+        try:
+            index = DefinedIndex(f"{name}_{index_type}", db_path=os.path.join(log_dir, f"{name}_{db_prefix}.db"))
+        except:
+            return
 
         while True:
-            backoff_time = 1  # start with 1 second backoff time
+            backoff_time = 1
 
             batch = []
             keys = []
@@ -31,19 +42,22 @@ def upload_to_smartdash(name, log_dir, url, batch_size=100):
                         1 / 0
                     
                     index.delete(keys)
-                    print(name, index_type, db_prefix, resp, len(keys))
-                    backoff_time = 1  # reset backoff time on successful request
+                    backoff_time = 1
                 except:
                     backoff_time = min(
                         backoff_time * 2, 60
-                    )  # double backoff time, max 60 seconds
+                    )
                     time.sleep(backoff_time)
             else:
                 break
 
-    upload_data(name, "logs", "logs")
-    upload_data(name, "ml_inputs_outputs", "logs")
-    upload_data(name, "timers", "timers")
+    
+
+    while True:
+        upload_data(name, "logs", "logs")
+        upload_data(name, "ml_inputs_outputs", "logs")
+        upload_data(name, "timers", "timers")
+        time.sleep(int(os.getenv(SYNC_SLEEP, 10)))
 
 class PipelineTimer:
     def __init__(self, name, save_to_dir="./"):
@@ -151,7 +165,6 @@ if __name__ == "__main__":
             time.sleep(random.randint(100, 600)/1000)
             pipeline_timer.finished(id=u_id)
 
-            pipeline_logger = PipelineLogger("analytics")
             pipeline_logger.debug(u_id, "message_1", "message_2", "message_3")
             pipeline_logger.info(u_id, "message_5", "message_6")
             pipeline_logger.warning(u_id, "message_7", "message_8")
@@ -159,6 +172,8 @@ if __name__ == "__main__":
             pipeline_logger.ml_inputs_outputs(u_id, ["inputs"], ["outputs"], "model_type")
 
         pipeline_timer = PipelineTimer("analytics")
+        pipeline_logger = PipelineLogger("analytics")
+
         for _ in range(100):
             create_some_log(pipeline_timer)
             print(_)
