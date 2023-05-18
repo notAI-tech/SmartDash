@@ -7,13 +7,16 @@ from liteindex import DefinedIndex
 
 
 def upload_to_smartdash():
-    import argparse
-    parser = argparse.ArgumentParser(description="Smartlogger sync service")
-    parser.add_argument("--name", type=str, help="name, given at log or timer initialization time.", required=True)
-    parser.add_argument("--save_dir", type=str, help="Directory to save logs", required=True)
-    parser.add_argument("--smartdash_url", type=str, help="Smartdash server URL", required=True)
-    args = parser.parse_args()
-    _upload_to_smartdash(args.name, args.save_dir, args.smartdash_url)
+    try:
+        import argparse
+        parser = argparse.ArgumentParser(description="Smartlogger sync service")
+        parser.add_argument("--name", type=str, help="name, given at log or timer initialization time.", required=True)
+        parser.add_argument("--save_dir", type=str, help="Directory to save logs", required=True)
+        parser.add_argument("--smartdash_url", type=str, help="Smartdash server URL", required=True)
+        args = parser.parse_args()
+        _upload_to_smartdash(args.name, args.save_dir, args.smartdash_url)
+    except:
+        pass
 
 def _upload_to_smartdash(name, log_dir, url, batch_size=100):
     import requests
@@ -61,7 +64,7 @@ def _upload_to_smartdash(name, log_dir, url, batch_size=100):
         upload_data(name, "timers", "timers")
         time.sleep(int(os.getenv(SYNC_SLEEP, 10)))
 
-class PipelineTimer:
+class SmartTimer:
     def __init__(self, name, save_to_dir="./"):
         self.name = name
         os.makedirs(save_to_dir, exist_ok=True)
@@ -87,7 +90,7 @@ class PipelineTimer:
         )
 
 
-class PipelineLogger:
+class SmartLogger:
     def __init__(self, name, save_to_dir="./"):
         self.name = name
         self.logs_index = DefinedIndex(
@@ -173,8 +176,8 @@ if __name__ == "__main__":
             pipeline_logger.exception(u_id, "message_9", "message_10")
             pipeline_logger.ml_inputs_outputs(u_id, ["inputs"], ["outputs"], "model_type")
 
-        pipeline_timer = PipelineTimer("analytics")
-        pipeline_logger = PipelineLogger("analytics")
+        pipeline_timer = SmartTimer("analytics")
+        pipeline_logger = SmartLogger("analytics")
 
         for _ in range(100):
             create_some_log(pipeline_timer)
