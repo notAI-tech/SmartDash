@@ -18,7 +18,7 @@ URL = "https://github.com/notAI-tech/smartdash"
 EMAIL = "praneeth@bpraneeth.com"
 AUTHOR = "BEDAPUDI PRANEETH"
 REQUIRES_PYTHON = ">=3.6.0"
-VERSION = "0.0.1.dev4"
+VERSION = "0.0.1.dev5"
 
 # What packages are required for this module to be executed?
 REQUIRED = [
@@ -106,7 +106,7 @@ setup(
     packages=find_packages(exclude=("tests",)),
     # If your package is a single module, use this instead of 'packages':
     # py_modules=['mypackage'],
-    entry_points={"console_scripts": ["smartlogger=smartlogger:main"]},
+    entry_points={"console_scripts": ["smartlogger=smartlogger:upload_to_smartdash"]},
     install_requires=REQUIRED,
     extras_require=EXTRAS,
     include_package_data=True,
