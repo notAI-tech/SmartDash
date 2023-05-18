@@ -5,7 +5,6 @@ import uuid
 import logging
 from liteindex import DefinedIndex
 
-
 def upload_to_smartdash(name, log_dir, url, batch_size=100):
     import requests
 

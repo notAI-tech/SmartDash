@@ -13,7 +13,7 @@ from setuptools import find_packages, setup, Command
 
 # Package meta-data.
 NAME = "smartlog"
-DESCRIPTION = "SQLite based queryable python indexes for dicts and lists"
+DESCRIPTION = "python logging client for SmartDash"
 URL = "https://github.com/notAI-tech/smartdash"
 EMAIL = "praneeth@bpraneeth.com"
 AUTHOR = "BEDAPUDI PRANEETH"
@@ -22,6 +22,8 @@ VERSION = "0.0.1.dev1"
 
 # What packages are required for this module to be executed?
 REQUIRED = [
+    "requests",
+    "liteindex"
 ]
 
 # What packages are optional?
