@@ -32,8 +32,7 @@ class AddLogs(object):
         logs = []
         for _, log_data in LOG_INDEX.search(query={"app_name": app_name, "timestamp": {"$gt": from_time}}, sort_by="timestamp", reversed_sort=True, page=1):
             logs.append(log_data)
-            if len(logs) >= count:
-                break
+
         resp.media = logs
         resp.status = falcon.HTTP_200
 
@@ -51,8 +50,6 @@ class AddTimers(object):
         logs = []
         for _, log_data in TIMERS_INDEX.search(query={"app_name": app_name, "timestamp": {"$gt": from_time}}, sort_by="timestamp", reversed_sort=True, page=1):
             logs.append(log_data)
-            if len(logs) >= count:
-                break
         resp.media = logs
         resp.status = falcon.HTTP_200
 
@@ -70,8 +67,6 @@ class AddMLInputsOutputs(object):
         logs = []
         for _, log_data in ML_INPUTS_OUTPUTS_INDEX.search(query={"app_name": app_name, "timestamp": {"$gt": from_time}}, sort_by="timestamp", reversed_sort=True, page=1):
             logs.append(log_data)
-            if len(logs) >= count:
-                break
         resp.media = logs
         resp.status = falcon.HTTP_200
 
