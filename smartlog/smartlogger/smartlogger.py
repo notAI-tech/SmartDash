@@ -79,7 +79,13 @@ class SmartTimer:
         os.makedirs(save_to_dir, exist_ok=True)
         self.timers_index = DefinedIndex(
             f"{self.name}_timers",
-            schema={"u_id": "", "stage": "", "timestamp": 0, "failed": False, "start": False},
+            schema={
+                "u_id": "",
+                "stage": "",
+                "timestamp": 0,
+                "failed": False,
+                "start": False,
+            },
             db_path=os.path.join(save_to_dir, f"{self.name}_timers.db"),
             auto_key=True,
         )
@@ -106,7 +112,7 @@ class SmartTimer:
             }
         )
 
-    def failed(self, id, name="end"):
+    def failed(self, id, stage="end"):
         self.timers_index.add(
             {
                 "u_id": str(id),
@@ -118,13 +124,18 @@ class SmartTimer:
         )
 
 
-
 class SmartLogger:
     def __init__(self, name, save_to_dir="./"):
         self.name = name
         self.logs_index = DefinedIndex(
             f"{self.name}_logs",
-            schema={"u_id": "", "level": "", "messages": [], "timestamp": 0, "stage": ""},
+            schema={
+                "u_id": "",
+                "level": "",
+                "messages": [],
+                "timestamp": 0,
+                "stage": "",
+            },
             db_path=os.path.join(save_to_dir, f"{self.name}_logs.db"),
             auto_key=True,
         )
@@ -136,7 +147,7 @@ class SmartLogger:
                 "outputs": [],
                 "model_type": "",
                 "timestamp": 0,
-                "stage": ""
+                "stage": "",
             },
             db_path=os.path.join(save_to_dir, f"{self.name}_logs.db"),
             auto_key=True,
@@ -150,7 +161,7 @@ class SmartLogger:
                 "level": level,
                 "messages": [str(_) for _ in messages],
                 "timestamp": timestamp,
-                "stage": stage
+                "stage": stage,
             }
         )
 
@@ -181,7 +192,7 @@ class SmartLogger:
                 "outputs": outputs,
                 "model_type": model_type,
                 "timestamp": time.time(),
-                "stage": stage
+                "stage": stage,
             }
         )
 
