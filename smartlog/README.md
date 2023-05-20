@@ -4,12 +4,26 @@ from smartlogger import SmartTimer
 timer = SmartTimer(NAME, save_to_dir="./")
 
 timer.start(unique_id)
-timer.stage_success(unique_id, name="pre_processing")
-timer.stage_failed(unique_id, name="feature_extraction")
-timer.stage_success(unique_id, name="feature_extraction")
+
+timer.start(unique_id, stage="pre_processing")
+# code
+timer.finished(unique_id, stage="pre_processing")
+# if failed
+timer.failed(unique_id, stage="pre_processing")
+
+
+timer.start(unique_id, stage="feature_extraction")
+# code
+timer.finished(unique_id, stage="feature_extraction")
+# if failed
+timer.failed(unique_id, stage="feature_extraction")
+
 timer.finished(unique_id)
 
+```
 
+
+```
 from smartlogger import SmartLogger
 
 logger = SmartLogger(NAME, save_to_dir="./")
