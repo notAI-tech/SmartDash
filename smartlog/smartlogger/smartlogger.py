@@ -79,40 +79,44 @@ class SmartTimer:
         os.makedirs(save_to_dir, exist_ok=True)
         self.timers_index = DefinedIndex(
             f"{self.name}_timers",
-            schema={"u_id": "", "stage": "", "timestamp": 0, "failed": False},
+            schema={"u_id": "", "stage": "", "timestamp": 0, "failed": False, "start": False},
             db_path=os.path.join(save_to_dir, f"{self.name}_timers.db"),
             auto_key=True,
         )
 
-    def start(self, id):
+    def start(self, id, stage="begin"):
         self.timers_index.add(
             {
                 "u_id": str(id),
-                "stage": "start",
+                "stage": stage,
                 "timestamp": time.time(),
                 "failed": False,
+                "start": True,
             }
         )
 
-    def stage_success(self, id, name):
-        self.timers_index.add(
-            {"u_id": str(id), "stage": name, "timestamp": time.time(), "failed": False}
-        )
-
-    def stage_failed(self, id, name):
-        self.timers_index.add(
-            {"u_id": str(id), "stage": name, "timestamp": time.time(), "failed": True}
-        )
-
-    def finished(self, id):
+    def finished(self, id, stage="end"):
         self.timers_index.add(
             {
                 "u_id": str(id),
-                "stage": "finished",
+                "stage": stage,
                 "timestamp": time.time(),
                 "failed": False,
+                "start": False,
             }
         )
+
+    def failed(self, id, name="end"):
+        self.timers_index.add(
+            {
+                "u_id": str(id),
+                "stage": stage,
+                "timestamp": time.time(),
+                "failed": True,
+                "start": False,
+            }
+        )
+
 
 
 class SmartLogger:
@@ -120,7 +124,7 @@ class SmartLogger:
         self.name = name
         self.logs_index = DefinedIndex(
             f"{self.name}_logs",
-            schema={"u_id": "", "level": "", "messages": [], "timestamp": 0},
+            schema={"u_id": "", "level": "", "messages": [], "timestamp": 0, "stage": ""},
             db_path=os.path.join(save_to_dir, f"{self.name}_logs.db"),
             auto_key=True,
         )
@@ -132,12 +136,13 @@ class SmartLogger:
                 "outputs": [],
                 "model_type": "",
                 "timestamp": 0,
+                "stage": ""
             },
             db_path=os.path.join(save_to_dir, f"{self.name}_logs.db"),
             auto_key=True,
         )
 
-    def _log(self, id, level, *messages):
+    def _log(self, id, level, *messages, stage=None):
         timestamp = time.time()
         self.logs_index.add(
             {
@@ -145,22 +150,23 @@ class SmartLogger:
                 "level": level,
                 "messages": [str(_) for _ in messages],
                 "timestamp": timestamp,
+                "stage": stage
             }
         )
 
-    def debug(self, id, *messages):
-        self._log(id, "DEBUG", *messages)
+    def debug(self, id, *messages, stage=None):
+        self._log(id, "DEBUG", *messages, stage=stage)
 
-    def info(self, id, *messages):
-        self._log(id, "INFO", *messages)
+    def info(self, id, *messages, stage=None):
+        self._log(id, "INFO", *messages, stage=stage)
 
-    def warning(self, id, *messages):
-        self._log(id, "WARNING", *messages)
+    def warning(self, id, *messages, stage=None):
+        self._log(id, "WARNING", *messages, stage=stage)
 
-    def exception(self, id, *messages):
-        self._log(id, "EXCEPTION", *messages)
+    def exception(self, id, *messages, stage=None):
+        self._log(id, "EXCEPTION", *messages, stage=stage)
 
-    def ml_inputs_outputs(self, id, inputs, outputs, model_type):
+    def ml_inputs_outputs(self, id, inputs, outputs, model_type, stage=None):
         if not isinstance(inputs, (list, tuple)):
             raise ValueError("inputs must be a list or tuple")
         if not isinstance(outputs, (list, tuple)):
@@ -175,6 +181,7 @@ class SmartLogger:
                 "outputs": outputs,
                 "model_type": model_type,
                 "timestamp": time.time(),
+                "stage": stage
             }
         )
 
@@ -189,15 +196,16 @@ if __name__ == "__main__":
 
         def create_some_log(pipeline_timer):
             u_id = str(uuid.uuid4())
-            pipeline_timer.start(id=u_id)
+
+            pipeline_timer.start(id=u_id, stage="begin")
             time.sleep(random.randint(100, 600) / 1000)
-            pipeline_timer.stage_success(id=u_id, name="pre_processing")
+            pipeline_timer.start(id=u_id, stage="feature_extraction")
             time.sleep(random.randint(100, 600) / 1000)
 
             if random.choice([0, 1, 2, 3, 4]) == 3:
-                pipeline_timer.stage_failed(id=u_id, name="feature_extraction")
+                pipeline_timer.failed(id=u_id, name="feature_extraction")
             else:
-                pipeline_timer.stage_success(id=u_id, name="feature_extraction")
+                pipeline_timer.finished(id=u_id, name="feature_extraction")
 
             time.sleep(random.randint(100, 600) / 1000)
             pipeline_timer.finished(id=u_id)

@@ -14,9 +14,9 @@ from datetime import datetime
 
 from liteindex import DefinedIndex
 
-LOG_INDEX = DefinedIndex("log_index", {"app_name": "", "u_id": "", "level": "", "messages": [], "timestamp": 0}, "smartdash.db", auto_key=True)
-TIMERS_INDEX = DefinedIndex("timers_index", {"app_name": "", "u_id": "", "stage": "", "timestamp": 0}, "smartdash.db", auto_key=True)
-ML_INPUTS_OUTPUTS_INDEX = DefinedIndex("ml_inputs_outputs_index", {"app_name": "", "u_id": "", "inputs": [], "outputs": [], "model_type": "", "timestamp": 0}, "smartdash.db", auto_key=True)
+LOG_INDEX = DefinedIndex("log_index", {"app_name": "", "u_id": "", "level": "", "messages": [], "timestamp": 0, "stage": ""}, "smartdash.db", auto_key=True)
+TIMERS_INDEX = DefinedIndex("timers_index", {"app_name": "", "u_id": "", "stage": "", "timestamp": 0, "failed": False, "start": False}, "smartdash.db", auto_key=True)
+ML_INPUTS_OUTPUTS_INDEX = DefinedIndex("ml_inputs_outputs_index", {"app_name": "", "u_id": "", "inputs": [], "outputs": [], "model_type": "", "timestamp": 0, "stage": ""}, "smartdash.db", auto_key=True)
 
 class AddLogs(object):
     def on_post(self, req, resp):
