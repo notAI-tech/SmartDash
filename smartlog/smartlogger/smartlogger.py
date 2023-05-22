@@ -7,26 +7,23 @@ from liteindex import DefinedIndex
 
 
 def upload_to_smartdash():
-    try:
-        import argparse
+    import argparse
 
-        parser = argparse.ArgumentParser(description="Smartlogger sync service")
-        parser.add_argument(
-            "--name",
-            type=str,
-            help="name, given at log or timer initialization time.",
-            required=True,
-        )
-        parser.add_argument(
-            "--save_dir", type=str, help="Directory to save logs", required=True
-        )
-        parser.add_argument(
-            "--smartdash_url", type=str, help="Smartdash server URL", required=True
-        )
-        args = parser.parse_args()
-        _upload_to_smartdash(args.name, args.save_dir, args.smartdash_url)
-    except:
-        pass
+    parser = argparse.ArgumentParser(description="Smartlogger sync service")
+    parser.add_argument(
+        "--name",
+        type=str,
+        help="name, given at log or timer initialization time.",
+        required=True,
+    )
+    parser.add_argument(
+        "--save_dir", type=str, help="Directory to save logs", required=True
+    )
+    parser.add_argument(
+        "--smartdash_url", type=str, help="Smartdash server URL", required=True
+    )
+    args = parser.parse_args()
+    _upload_to_smartdash(args.name, args.save_dir, args.smartdash_url)
 
 
 def _upload_to_smartdash(name, log_dir, url, batch_size=100):
