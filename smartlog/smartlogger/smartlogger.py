@@ -67,7 +67,7 @@ def _upload_to_smartdash(name, log_dir, url, batch_size=100):
         upload_data(name, "logs", "logs")
         upload_data(name, "ml_inputs_outputs", "logs")
         upload_data(name, "timers", "timers")
-        time.sleep(int(os.getenv(SYNC_SLEEP, 10)))
+        time.sleep(int(os.getenv("SYNC_SLEEP", 10)))
 
 
 class SmartTimer:
@@ -201,36 +201,39 @@ if __name__ == "__main__":
     import random
 
     if sys.argv[1] == "dummy":
+        import random
+        import time
+        import uuid
 
-        def create_some_log(pipeline_timer):
+        def create_some_log(timer, logger):
             u_id = str(uuid.uuid4())
 
-            pipeline_timer.start(id=u_id, stage="begin")
+            timer.start(id=u_id)
             time.sleep(random.randint(100, 600) / 1000)
-            pipeline_timer.start(id=u_id, stage="feature_extraction")
+            timer.start(id=u_id, stage="feature_extraction")
             time.sleep(random.randint(100, 600) / 1000)
 
             if random.choice([0, 1, 2, 3, 4]) == 3:
-                pipeline_timer.failed(id=u_id, name="feature_extraction")
+                timer.failed(id=u_id, stage="feature_extraction")
             else:
-                pipeline_timer.finished(id=u_id, name="feature_extraction")
+                timer.finished(id=u_id, stage="feature_extraction")
 
             time.sleep(random.randint(100, 600) / 1000)
-            pipeline_timer.finished(id=u_id)
+            timer.finished(id=u_id)
 
-            pipeline_logger.debug(u_id, "message_1", "message_2", "message_3")
-            pipeline_logger.info(u_id, "message_5", "message_6")
-            pipeline_logger.warning(u_id, "message_7", "message_8")
-            pipeline_logger.exception(u_id, "message_9", "message_10")
-            pipeline_logger.ml_inputs_outputs(
-                u_id, ["inputs"], ["outputs"], "model_type"
+            logger.debug(
+                u_id, "message_1", "message_2", "message_3", stage="optional_stage"
             )
+            logger.info(u_id, "message_5", "message_6", stage="optional_stage")
+            logger.warning(u_id, "message_7", "message_8")
+            logger.exception(u_id, "message_9", "message_10")
+            logger.ml_inputs_outputs(u_id, ["inputs"], ["outputs"], "model_type")
 
-        pipeline_timer = SmartTimer("analytics")
-        pipeline_logger = SmartLogger("analytics")
+        timer = SmartTimer("analytics")
+        logger = SmartLogger("analytics")
 
         for _ in range(100):
-            create_some_log(pipeline_timer)
+            create_some_log(timer, logger)
             print(_)
 
     elif sys.argv[1] == "upload":
