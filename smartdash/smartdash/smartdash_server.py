@@ -55,6 +55,10 @@ ML_INPUTS_OUTPUTS_INDEX = DefinedIndex(
     auto_key=True,
 )
 
+class AppNames(object):
+    def on_get(self, req, resp):
+        resp.media = {"success": True, "app_names": list(set(LOG_INDEX.distinct("app_name") + TIMERS_INDEX.distinct("app_name") + ML_INPUTS_OUTPUTS_INDEX.distinct("app_name")))}
+        resp.status = falcon.HTTP_200
 
 class AddLogs(object):
     def on_post(self, req, resp):
@@ -129,18 +133,18 @@ class AddMLInputsOutputs(object):
         resp.status = falcon.HTTP_200
 
 
-app = falcon.App(cors_enable=True)
-app.req_options.auto_parse_form_urlencoded = True
-app = falcon.App(
-    middleware=falcon.CORSMiddleware(allow_origins="*", allow_credentials="*")
-)
+def main(port=8080):
+    app = falcon.App(cors_enable=True)
+    app.req_options.auto_parse_form_urlencoded = True
+    app = falcon.App(
+        middleware=falcon.CORSMiddleware(allow_origins="*", allow_credentials="*")
+    )
 
-app.add_route("/logs", AddLogs())
-app.add_route("/timers", AddTimers())
-app.add_route("/ml_inputs_outputs", AddMLInputsOutputs())
+    app.add_route("/logs", AddLogs())
+    app.add_route("/timers", AddTimers())
+    app.add_route("/ml_inputs_outputs", AddMLInputsOutputs())
+    app.add_route("/app_names", AppNames())
 
-
-if __name__ == "__main__":
     import gunicorn.app.base
 
     class StandaloneApplication(gunicorn.app.base.BaseApplication):
@@ -161,7 +165,6 @@ if __name__ == "__main__":
         def load(self):
             return self.application
 
-    port = int(os.getenv("PORT", "8080"))
     host = os.getenv("HOST", "0.0.0.0")
 
     options = {
