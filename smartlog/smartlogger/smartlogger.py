@@ -125,6 +125,7 @@ class SmartLogger:
     def __init__(self, name, save_to_dir="./", log_to_console=True):
         self.name = name
         self.log_to_console = log_to_console
+        os.makedirs(save_to_dir, exist_ok=True)
 
         self.logs_index = DefinedIndex(
             f"{self.name}_logs",
