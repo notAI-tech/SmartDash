@@ -7,11 +7,15 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
 
+SERVER_URL = os.getenv("SERVER_URL")
+if not SERVER_URL:
+    print("--server_url is must of --dash")
+    exit()
 
 # Function to fetch logs data
 def fetch_logs(app_name, last_n_hours):
     logs_data = requests.get(
-        f"http://localhost:8080/logs?app_name={app_name}&last_n_hours={last_n_hours}"
+        f"{SERVER_URL}logs?app_name={app_name}&last_n_hours={last_n_hours}"
     ).json()
     # Convert timestamp to datetime format
     for log in logs_data:
@@ -22,7 +26,7 @@ def fetch_logs(app_name, last_n_hours):
 # Function to fetch logs data
 def fetch_ml_inputs_outputs(app_name, last_n_hours):
     logs_data = requests.get(
-        f"http://localhost:8080/ml_inputs_outputs?app_name={app_name}&last_n_hours={last_n_hours}"
+        f"{SERVER_URL}ml_inputs_outputs?app_name={app_name}&last_n_hours={last_n_hours}"
     ).json()
     # Convert timestamp to datetime format
     for log in logs_data:
@@ -33,7 +37,7 @@ def fetch_ml_inputs_outputs(app_name, last_n_hours):
 # Function to fetch timers data
 def fetch_timers(app_name, last_n_hours):
     timers_data = requests.get(
-        f"http://localhost:8080/timers?app_name={app_name}&last_n_hours={last_n_hours}"
+        f"{SERVER_URL}timers?app_name={app_name}&last_n_hours={last_n_hours}"
     ).json()
     return timers_data
 
@@ -157,7 +161,7 @@ def main():
     st.sidebar.markdown("## Settings")
     app_name = st.sidebar.selectbox(
         "Select App",
-        requests.get("http://localhost:8080/app_names").json()["app_names"],
+        requests.get("{SERVER_URL}app_names").json()["app_names"],
         index=0,
     )
     time_range = st.sidebar.selectbox(
