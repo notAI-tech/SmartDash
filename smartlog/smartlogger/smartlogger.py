@@ -122,8 +122,10 @@ class SmartTimer:
 
 
 class SmartLogger:
-    def __init__(self, name, save_to_dir="./"):
+    def __init__(self, name, save_to_dir="./", log_to_console=True):
         self.name = name
+        self.log_to_console = log_to_console
+
         self.logs_index = DefinedIndex(
             f"{self.name}_logs",
             schema={
@@ -136,6 +138,7 @@ class SmartLogger:
             db_path=os.path.join(save_to_dir, f"{self.name}_logs.db"),
             auto_key=True,
         )
+
         self.ml_inputs_outputs_index = DefinedIndex(
             f"{self.name}_ml_inputs_outputs",
             schema={
@@ -162,6 +165,27 @@ class SmartLogger:
             }
         )
 
+        if self.log_to_console:
+            self._print_to_console(timestamp, id, level, messages, stage)
+
+    def _print_to_console(self, timestamp, id, level, messages, stage):
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp))
+        log_colors = {
+            "INFO": "\033[94m",
+            "WARNING": "\033[93m",
+            "ERROR": "\033[91m",
+            "EXCEPTION": "\033[91m",
+            "DEBUG": "\033[92m",
+        }
+        stage_color = "\033[95m"
+        reset_color = "\033[0m"
+
+        formatted_message = f"{log_colors[level]}{timestamp} {id} {stage_color}{stage}: {level}: {reset_color}"
+        for message in messages:
+            formatted_message += f"{message} "
+
+        print(formatted_message)
+
     def debug(self, id, *messages, stage=None):
         self._log(id, "DEBUG", *messages, stage=stage)
 
@@ -171,7 +195,11 @@ class SmartLogger:
     def warning(self, id, *messages, stage=None):
         self._log(id, "WARNING", *messages, stage=stage)
 
-    def exception(self, id, *messages, stage=None):
+    def error(self, id, *messages, stage=None):
+        self._log(id, "ERROR", *messages, stage=stage)
+
+    def exception(self, id, exc, *messages, stage=None):
+        messages = (str(exc),) + messages
         self._log(id, "EXCEPTION", *messages, stage=stage)
 
     def ml_inputs_outputs(self, id, inputs, outputs, model_type, stage=None):
