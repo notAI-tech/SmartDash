@@ -155,7 +155,11 @@ def main():
 
     # Dropdowns for app_name and last_n_hours in the sidebar
     st.sidebar.markdown("## Settings")
-    app_name = st.sidebar.selectbox("Select App", requests.get("http://localhost:8080/app_names").json()['app_names'], index=0)
+    app_name = st.sidebar.selectbox(
+        "Select App",
+        requests.get("http://localhost:8080/app_names").json()["app_names"],
+        index=0,
+    )
     time_range = st.sidebar.selectbox(
         "Select Time Range", ["8 hours", "12 hours", "Last day", "Last week"], index=0
     )

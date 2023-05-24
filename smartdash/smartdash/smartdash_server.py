@@ -55,10 +55,21 @@ ML_INPUTS_OUTPUTS_INDEX = DefinedIndex(
     auto_key=True,
 )
 
+
 class AppNames(object):
     def on_get(self, req, resp):
-        resp.media = {"success": True, "app_names": list(set(LOG_INDEX.distinct("app_name") + TIMERS_INDEX.distinct("app_name") + ML_INPUTS_OUTPUTS_INDEX.distinct("app_name")))}
+        resp.media = {
+            "success": True,
+            "app_names": list(
+                set(
+                    LOG_INDEX.distinct("app_name")
+                    + TIMERS_INDEX.distinct("app_name")
+                    + ML_INPUTS_OUTPUTS_INDEX.distinct("app_name")
+                )
+            ),
+        }
         resp.status = falcon.HTTP_200
+
 
 class AddLogs(object):
     def on_post(self, req, resp):
