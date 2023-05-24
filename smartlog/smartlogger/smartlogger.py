@@ -9,25 +9,20 @@ from liteindex import DefinedIndex
 def upload_to_smartdash():
     import argparse
 
-    parser = argparse.ArgumentParser(description="Smartlogger sync service")
-    parser.add_argument(
-        "--name",
-        type=str,
-        help="name, given at log or timer initialization time.",
-        required=True,
-    )
+    parser = argparse.ArgumentParser(description="start service for syncing to smartdash")
     parser.add_argument(
         "--save_dir", type=str, help="Directory to save logs", required=True
     )
     parser.add_argument(
-        "--smartdash_url", type=str, help="Smartdash server URL", required=True
+        "--server_url", type=str, help="Smartdash server URL", required=True
     )
     args = parser.parse_args()
-    _upload_to_smartdash(args.name, args.save_dir, args.smartdash_url)
+    _upload_to_smartdash(args.save_dir, args.server_url)
 
 
-def _upload_to_smartdash(name, log_dir, url, batch_size=100):
+def _upload_to_smartdash(log_dir, url, batch_size=100):
     import requests
+    from glob import glob
 
     def upload_data(name, index_type, db_prefix):
         try:
@@ -57,18 +52,27 @@ def _upload_to_smartdash(name, log_dir, url, batch_size=100):
 
                     index.delete(keys)
                     backoff_time = 1
+                    print(f"Uploaded {len(batch)} {index_type} to smartdash")
                 except:
                     backoff_time = min(backoff_time * 2, 60)
                     time.sleep(backoff_time)
+                    print(f"Failed to upload {index_type} to smartdash")
             else:
                 break
 
     while True:
-        upload_data(name, "logs", "logs")
-        upload_data(name, "ml_inputs_outputs", "logs")
-        upload_data(name, "timers", "timers")
-        time.sleep(int(os.getenv("SYNC_SLEEP", 10)))
+        db_files_in_dir = glob(os.path.join(log_dir, "*.db"))
+        for db_file in db_files_in_dir:
+            name = '_'.join(os.path.basename(db_file).split("_")[:-1])
+            index_type = os.path.basename(db_file).split("_")[-1].split(".")[0]
 
+            if index_type == "logs":
+                upload_data(name, "logs", "logs")
+                upload_data(name, "ml_inputs_outputs", "logs")
+            elif index_type == "timers":
+                upload_data(name, "timers", "timers")
+
+        time.sleep(int(os.getenv("SYNC_SLEEP", 10)))
 
 class SmartTimer:
     def __init__(self, name, save_to_dir="./"):
