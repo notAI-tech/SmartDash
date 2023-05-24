@@ -15,9 +15,6 @@ def cli():
 
     args = parser.parse_args()
 
-    if args.server_url:
-        os.environ["SMARTDASH_SERVER_URL"] = str(args.server_url)
-
     if not args.port:
         args.port = 8080
 
@@ -26,8 +23,10 @@ def cli():
     elif args.dash:
         current_dir = os.path.dirname(os.path.abspath(__file__))
         dash_file = os.path.join(current_dir, "dash.py")
-        subprocess.run(
-            [
+                
+        os.system(
+            " ".join([
+                f"SMARTDASH_SERVER_URL={args.server_url}",
                 "streamlit",
                 "run",
                 dash_file,
@@ -37,10 +36,7 @@ def cli():
                 "false",
                 "--server.port",
                 str(args.port),
-            ]
+            ])
         )
     else:
         parser.print_help()
-
-
-cli()
