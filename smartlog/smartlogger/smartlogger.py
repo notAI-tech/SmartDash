@@ -112,7 +112,7 @@ class SmartLogger:
 
         self.metrics_index = DefinedIndex(
             f"{self.name}_metrics",
-            schema={"metric": "", "value": 0},
+            schema={"metric": "", "value": 0, "timestamp": 0},
             db_path=db_path,
             auto_key=True,
         )
@@ -190,7 +190,9 @@ class SmartLogger:
         )
 
     def metric(self, metric, value):
-        self.metrics_index.add({"metric": metric, "value": value})
+        self.metrics_index.add(
+            {"metric": metric, "value": value, "timestamp": time.time()}
+        )
 
     def Stage(self, id, stage_name, tags=[], model_type=""):
         return self.StageConstructor(
@@ -210,50 +212,50 @@ class SmartLogger:
             self.model_type = model_type
             self.parent_logger.info(id, "Stage started", stage=stage, tags=tags)
 
-        def failed(self):
+        def failed(self, tags=[]):
             self.parent_logger.error(
-                self.id, "Stage failed", stage=self.stage, tags=self.tags
+                self.id, "Stage failed", stage=self.stage, tags=self.tags + tags
             )
 
-        def success(self):
+        def success(self, tags=[]):
             self.parent_logger.info(
-                self.id, "Stage succeeded", stage=self.stage, tags=self.tags
+                self.id, "Stage succeeded", stage=self.stage, tags=self.tags + tags
             )
 
         # Wrapping parent logger functions within Stage class
-        def debug(self, *messages):
+        def debug(self, *messages, tags=[]):
             self.parent_logger.debug(
-                self.id, *messages, stage=self.stage, tags=self.tags
+                self.id, *messages, stage=self.stage, tags=self.tags + tags
             )
 
-        def info(self, *messages):
+        def info(self, *messages, tags=[]):
             self.parent_logger.info(
-                self.id, *messages, stage=self.stage, tags=self.tags
+                self.id, *messages, stage=self.stage, tags=self.tags + tags
             )
 
-        def warning(self, *messages):
+        def warning(self, *messages, tags=[]):
             self.parent_logger.warning(
-                self.id, *messages, stage=self.stage, tags=self.tags
+                self.id, *messages, stage=self.stage, tags=self.tags + tags
             )
 
-        def error(self, *messages):
+        def error(self, *messages, tags=[]):
             self.parent_logger.error(
-                self.id, *messages, stage=self.stage, tags=self.tags
+                self.id, *messages, stage=self.stage, tags=self.tags + tags
             )
 
-        def exception(self, exc, *messages):
+        def exception(self, exc, *messages, tags=[]):
             self.parent_logger.exception(
-                self.id, exc, *messages, stage=self.stage, tags=self.tags
+                self.id, exc, *messages, stage=self.stage, tags=self.tags + tags
             )
 
-        def ml_inputs_outputs(self, inputs, outputs):
+        def ml_inputs_outputs(self, inputs, outputs, tags=[]):
             self.parent_logger.ml_inputs_outputs(
                 self.id,
                 inputs,
                 outputs,
                 self.model_type,
                 stage=self.stage,
-                tags=self.tags,
+                tags=self.tags + tags,
             )
 
         def metric(self, metric, value):
@@ -281,7 +283,7 @@ if __name__ == "__main__":
                 if stage_name == "inference":
                     stage.metric("accuracy", random.randint(0, 100))
 
-                stage.debug("test debug", 2, 3, 4)
+                stage.debug("test debug", 2, 3, 4, tags=["test:debug"])
                 time.sleep(random.uniform(0.0001, 0.1))
 
                 if random.choice([1, 2, 3, 4]) == 1:
