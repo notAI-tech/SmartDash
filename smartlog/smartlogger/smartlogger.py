@@ -9,7 +9,9 @@ from liteindex import DefinedIndex
 def upload_to_smartdash():
     import argparse
 
-    parser = argparse.ArgumentParser(description="start service for syncing to smartdash")
+    parser = argparse.ArgumentParser(
+        description="start service for syncing to smartdash"
+    )
     parser.add_argument(
         "--save_dir", type=str, help="Directory to save logs", required=True
     )
@@ -63,66 +65,13 @@ def _upload_to_smartdash(log_dir, url, batch_size=100):
     while True:
         db_files_in_dir = glob(os.path.join(log_dir, "*.db"))
         for db_file in db_files_in_dir:
-            name = '_'.join(os.path.basename(db_file).split("_")[:-1])
-            index_type = os.path.basename(db_file).split("_")[-1].split(".")[0]
+            name = "_".join(os.path.basename(db_file).split("_")[:-1])
 
-            if index_type == "logs":
-                upload_data(name, "logs", "logs")
-                upload_data(name, "ml_inputs_outputs", "logs")
-            elif index_type == "timers":
-                upload_data(name, "timers", "timers")
+            upload_data(name, "logs", "logs")
+            upload_data(name, "ml_inputs_outputs", "logs")
+            upload_data(name, "metrics", "logs")
 
         time.sleep(int(os.getenv("SYNC_SLEEP", 10)))
-
-class SmartTimer:
-    def __init__(self, name, save_to_dir="./"):
-        self.name = name
-        os.makedirs(save_to_dir, exist_ok=True)
-        self.timers_index = DefinedIndex(
-            f"{self.name}_timers",
-            schema={
-                "u_id": "",
-                "stage": "",
-                "timestamp": 0,
-                "failed": False,
-                "start": False,
-            },
-            db_path=os.path.join(save_to_dir, f"{self.name}_timers.db"),
-            auto_key=True,
-        )
-
-    def start(self, id, stage="begin"):
-        self.timers_index.add(
-            {
-                "u_id": str(id),
-                "stage": stage,
-                "timestamp": time.time(),
-                "failed": False,
-                "start": True,
-            }
-        )
-
-    def finished(self, id, stage="end"):
-        self.timers_index.add(
-            {
-                "u_id": str(id),
-                "stage": stage,
-                "timestamp": time.time(),
-                "failed": False,
-                "start": False,
-            }
-        )
-
-    def failed(self, id, stage="end"):
-        self.timers_index.add(
-            {
-                "u_id": str(id),
-                "stage": stage,
-                "timestamp": time.time(),
-                "failed": True,
-                "start": False,
-            }
-        )
 
 
 class SmartLogger:
@@ -130,6 +79,7 @@ class SmartLogger:
         self.name = name
         self.log_to_console = log_to_console
         os.makedirs(save_to_dir, exist_ok=True)
+        db_path = os.path.join(save_to_dir, f"{self.name}_logs.db")
 
         self.logs_index = DefinedIndex(
             f"{self.name}_logs",
@@ -139,8 +89,9 @@ class SmartLogger:
                 "messages": [],
                 "timestamp": 0,
                 "stage": "",
+                "tags": [],
             },
-            db_path=os.path.join(save_to_dir, f"{self.name}_logs.db"),
+            db_path=db_path,
             auto_key=True,
         )
 
@@ -153,12 +104,20 @@ class SmartLogger:
                 "model_type": "",
                 "timestamp": 0,
                 "stage": "",
+                "tags": [],
             },
-            db_path=os.path.join(save_to_dir, f"{self.name}_logs.db"),
+            db_path=db_path,
             auto_key=True,
         )
 
-    def _log(self, id, level, *messages, stage=None):
+        self.metrics_index = DefinedIndex(
+            f"{self.name}_metrics",
+            schema={"metric": "", "value": 0},
+            db_path=db_path,
+            auto_key=True,
+        )
+
+    def _log(self, id, level, *messages, stage=None, tags=[]):
         timestamp = time.time()
         self.logs_index.add(
             {
@@ -167,13 +126,14 @@ class SmartLogger:
                 "messages": [str(_) for _ in messages],
                 "timestamp": timestamp,
                 "stage": stage,
+                "tags": tags,
             }
         )
 
         if self.log_to_console:
-            self._print_to_console(timestamp, id, level, messages, stage)
+            self._print_to_console(timestamp, id, level, messages, stage, tags)
 
-    def _print_to_console(self, timestamp, id, level, messages, stage):
+    def _print_to_console(self, timestamp, id, level, messages, stage, tags=[]):
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp))
         log_colors = {
             "INFO": "\033[94m",
@@ -189,25 +149,27 @@ class SmartLogger:
         for message in messages:
             formatted_message += f"{message} "
 
+        formatted_message += f"tags: {tags}"
+
         print(formatted_message)
 
-    def debug(self, id, *messages, stage=None):
-        self._log(id, "DEBUG", *messages, stage=stage)
+    def debug(self, id, *messages, stage=None, tags=[]):
+        self._log(id, "DEBUG", *messages, stage=stage, tags=tags)
 
-    def info(self, id, *messages, stage=None):
-        self._log(id, "INFO", *messages, stage=stage)
+    def info(self, id, *messages, stage=None, tags=[]):
+        self._log(id, "INFO", *messages, stage=stage, tags=tags)
 
-    def warning(self, id, *messages, stage=None):
-        self._log(id, "WARNING", *messages, stage=stage)
+    def warning(self, id, *messages, stage=None, tags=[]):
+        self._log(id, "WARNING", *messages, stage=stage, tags=tags)
 
-    def error(self, id, *messages, stage=None):
-        self._log(id, "ERROR", *messages, stage=stage)
+    def error(self, id, *messages, stage=None, tags=[]):
+        self._log(id, "ERROR", *messages, stage=stage, tags=tags)
 
-    def exception(self, id, exc, *messages, stage=None):
+    def exception(self, id, exc, *messages, stage=None, tags=[]):
         messages = (str(exc),) + messages
-        self._log(id, "EXCEPTION", *messages, stage=stage)
+        self._log(id, "EXCEPTION", *messages, stage=stage, tags=tags)
 
-    def ml_inputs_outputs(self, id, inputs, outputs, model_type, stage=None):
+    def ml_inputs_outputs(self, id, inputs, outputs, model_type, stage=None, tags=[]):
         if not isinstance(inputs, (list, tuple)):
             raise ValueError("inputs must be a list or tuple")
         if not isinstance(outputs, (list, tuple)):
@@ -223,8 +185,79 @@ class SmartLogger:
                 "model_type": model_type,
                 "timestamp": time.time(),
                 "stage": stage,
+                "tags": tags,
             }
         )
+
+    def metric(self, metric, value):
+        self.metrics_index.add({"metric": metric, "value": value})
+
+    def Stage(self, id, stage_name, tags=[], model_type=""):
+        return self.StageConstructor(
+            parent_logger=self,
+            id=id,
+            stage=stage_name,
+            tags=tags,
+            model_type=model_type,
+        )
+
+    class StageConstructor:
+        def __init__(self, parent_logger, id, stage, tags=[], model_type=""):
+            self.parent_logger = parent_logger
+            self.id = str(id)
+            self.stage = stage
+            self.tags = tags
+            self.model_type = model_type
+            self.parent_logger.info(id, "Stage started", stage=stage, tags=tags)
+
+        def failed(self):
+            self.parent_logger.error(
+                self.id, "Stage failed", stage=self.stage, tags=self.tags
+            )
+
+        def success(self):
+            self.parent_logger.info(
+                self.id, "Stage succeeded", stage=self.stage, tags=self.tags
+            )
+
+        # Wrapping parent logger functions within Stage class
+        def debug(self, *messages):
+            self.parent_logger.debug(
+                self.id, *messages, stage=self.stage, tags=self.tags
+            )
+
+        def info(self, *messages):
+            self.parent_logger.info(
+                self.id, *messages, stage=self.stage, tags=self.tags
+            )
+
+        def warning(self, *messages):
+            self.parent_logger.warning(
+                self.id, *messages, stage=self.stage, tags=self.tags
+            )
+
+        def error(self, *messages):
+            self.parent_logger.error(
+                self.id, *messages, stage=self.stage, tags=self.tags
+            )
+
+        def exception(self, exc, *messages):
+            self.parent_logger.exception(
+                self.id, exc, *messages, stage=self.stage, tags=self.tags
+            )
+
+        def ml_inputs_outputs(self, inputs, outputs):
+            self.parent_logger.ml_inputs_outputs(
+                self.id,
+                inputs,
+                outputs,
+                self.model_type,
+                stage=self.stage,
+                tags=self.tags,
+            )
+
+        def metric(self, metric, value):
+            self.parent_logger.metric(metric, value)
 
 
 if __name__ == "__main__":
@@ -238,36 +271,28 @@ if __name__ == "__main__":
         import time
         import uuid
 
-        def create_some_log(timer, logger):
-            u_id = str(uuid.uuid4())
+        def create_some_log(logger):
+            u_id = uuid.uuid4()
+            for stage_name in ["preprocessing", "inference", "postprocessing"]:
+                stage = logger.Stage(
+                    u_id, stage_name, tags=[f"tag.{random.randint(0, 10)}"]
+                )
 
-            timer.start(id=u_id)
-            time.sleep(random.randint(100, 600) / 1000)
-            timer.start(id=u_id, stage="feature_extraction")
-            time.sleep(random.randint(100, 600) / 1000)
+                if stage_name == "inference":
+                    stage.metric("accuracy", random.randint(0, 100))
 
-            if random.choice([0, 1, 2, 3, 4]) == 3:
-                timer.failed(id=u_id, stage="feature_extraction")
-            else:
-                timer.finished(id=u_id, stage="feature_extraction")
+                stage.debug("test debug", 2, 3, 4)
+                time.sleep(random.uniform(0.0001, 0.1))
 
-            time.sleep(random.randint(100, 600) / 1000)
-            timer.finished(id=u_id)
+                if random.choice([1, 2, 3, 4]) == 1:
+                    stage.failed()
+                else:
+                    stage.success()
 
-            logger.debug(
-                u_id, "message_1", "message_2", "message_3", stage="optional_stage"
-            )
-            logger.info(u_id, "message_5", "message_6", stage="optional_stage")
-            logger.warning(u_id, "message_7", "message_8")
-            logger.exception(u_id, "message_9", "message_10")
-            logger.ml_inputs_outputs(u_id, ["inputs"], ["outputs"], "model_type")
-
-        timer = SmartTimer("analytics")
         logger = SmartLogger("analytics")
 
         for _ in range(100):
-            create_some_log(timer, logger)
-            print(_)
+            create_some_log(logger)
 
     elif sys.argv[1] == "upload":
         upload_to_smartdash("analytics", "./", "http://localhost:6788")
