@@ -290,6 +290,8 @@ if __name__ == "__main__":
                     stage.failed()
                 else:
                     stage.success()
+                    if stage_name == "postprocessing":
+                        stage.ml_inputs_outputs([1, 2, 3], [4, 5, "66"])
 
         logger = SmartLogger("analytics")
 
@@ -297,4 +299,4 @@ if __name__ == "__main__":
             create_some_log(logger)
 
     elif sys.argv[1] == "upload":
-        upload_to_smartdash("analytics", "./", "http://localhost:6788")
+        upload_to_smartdash()

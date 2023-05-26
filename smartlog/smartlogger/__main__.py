@@ -1,3 +1,3 @@
-from .smartlogger import SmartLogger, SmartTimer, upload_to_smartdash
+from . import upload_to_smartdash
 
 upload_to_smartdash()
