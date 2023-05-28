@@ -23,23 +23,12 @@ LOG_INDEX = DefinedIndex(
         "messages": [],
         "timestamp": 0,
         "stage": "",
+        "tags": [],
     },
     "smartdash.db",
     auto_key=True,
 )
-TIMERS_INDEX = DefinedIndex(
-    "timers_index",
-    {
-        "app_name": "",
-        "u_id": "",
-        "stage": "",
-        "timestamp": 0,
-        "failed": False,
-        "start": False,
-    },
-    "smartdash.db",
-    auto_key=True,
-)
+
 ML_INPUTS_OUTPUTS_INDEX = DefinedIndex(
     "ml_inputs_outputs_index",
     {
@@ -50,8 +39,16 @@ ML_INPUTS_OUTPUTS_INDEX = DefinedIndex(
         "model_type": "",
         "timestamp": 0,
         "stage": "",
+        "tags": [],
     },
     "smartdash.db",
+    auto_key=True,
+)
+
+METRICS_INDEX = DefinedIndex(
+    f"metrics_index",
+    schema={"app_name": "", "metric": "", "value": 0, "timestamp": 0},
+    db_path="smartdash.db",
     auto_key=True,
 )
 
@@ -63,7 +60,7 @@ class AppNames(object):
             "app_names": list(
                 set(
                     LOG_INDEX.distinct("app_name")
-                    + TIMERS_INDEX.distinct("app_name")
+                    + METRICS_INDEX.distinct("app_name")
                     + ML_INPUTS_OUTPUTS_INDEX.distinct("app_name")
                 )
             ),
@@ -96,10 +93,10 @@ class AddLogs(object):
         resp.status = falcon.HTTP_200
 
 
-class AddTimers(object):
+class AddMetrics(object):
     def on_post(self, req, resp):
         data = req.media
-        id = TIMERS_INDEX.add(data)
+        id = METRICS_INDEX.add(data)
         resp.media = {"success": True, "id": id}
         resp.status = falcon.HTTP_200
 
@@ -109,7 +106,7 @@ class AddTimers(object):
         app_name = req.params["app_name"]
 
         logs = []
-        for _, log_data in TIMERS_INDEX.search(
+        for _, log_data in METRICS_INDEX.search(
             query={"app_name": app_name, "timestamp": {"$gt": from_time}},
             sort_by="timestamp",
             reversed_sort=True,
@@ -152,7 +149,7 @@ def main(port=8080):
     )
 
     app.add_route("/logs", AddLogs())
-    app.add_route("/timers", AddTimers())
+    app.add_route("/metrics", AddMetrics())
     app.add_route("/ml_inputs_outputs", AddMLInputsOutputs())
     app.add_route("/app_names", AppNames())
 
