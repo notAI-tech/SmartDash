@@ -1,48 +1,20 @@
+
+### Use SmartLogger in your code
+
 ```python
-from smartlogger import SmartTimer
-
-timer = SmartTimer(NAME, save_to_dir="./")
-
-timer.start(unique_id)
-
-timer.start(unique_id, stage="pre_processing")
-# code
-timer.finished(unique_id, stage="pre_processing")
-# if failed
-timer.failed(unique_id, stage="pre_processing")
-
-
-timer.start(unique_id, stage="feature_extraction")
-# code
-timer.finished(unique_id, stage="feature_extraction")
-# if failed
-timer.failed(unique_id, stage="feature_extraction")
-
-timer.finished(unique_id)
-
-```
-
-
-```
 from smartlogger import SmartLogger
 
-# Initialize a SmartLogger instance
-logger = SmartLogger("my_application", save_to_dir="./logs")
+logger = SmartLogger("examplePipelineName", save_to_dir="OPTIONAL_SAVE_DIR, defaults to ./")
 
-# Use the SmartLogger instance to log messages with different log levels
+stage = logger.Stage(unique_id, stage_name, tags=optional_list_of_tags)
+# code block you want to log and time, eg: model inference/ db call/ pre/post processing code
+# stage.debug()/ info()/ exception (logs exc info)/ error
+# depending on whether it succeeded or not
+stage.success()
+stage.failed() 
+```
 
-# Log a debug message without stage
-logger.debug("id_1", "This is a debug message.")
-
-# Log a debug message with stage
-logger.debug("id_2", "This is a debug message with stage.", stage="data_processing")
-
-# Log an info message with stage
-logger.info("id_4", "This is an info message with stage.", stage="model_training")
-
-# Log an exception message without stage
-try:
-    raise ValueError("This is a ValueError.")
-except ValueError as e:
-    logger.exception("id_7", "An exception occurred:", e)
+```bash
+# Process to continuously upload logs to dash
+smartlogger --save_dir ./ --server_url "http://localhost:8080"
 ```
