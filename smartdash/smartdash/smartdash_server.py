@@ -14,6 +14,8 @@ from datetime import datetime
 
 from liteindex import DefinedIndex
 
+db_path = os.path.join(os.getenv("SMARTDASH_SAVE_DIR", "./"), "smartdash.db")
+
 LOG_INDEX = DefinedIndex(
     "log_index",
     {
@@ -25,7 +27,7 @@ LOG_INDEX = DefinedIndex(
         "stage": "",
         "tags": [],
     },
-    "smartdash.db",
+    db_path=db_path,
     auto_key=True,
 )
 
@@ -41,16 +43,115 @@ ML_INPUTS_OUTPUTS_INDEX = DefinedIndex(
         "stage": "",
         "tags": [],
     },
-    "smartdash.db",
+    db_path=db_path,
     auto_key=True,
 )
 
 METRICS_INDEX = DefinedIndex(
     f"metrics_index",
     schema={"app_name": "", "metric": "", "value": 0, "timestamp": 0},
-    db_path="smartdash.db",
+    db_path=db_path,
     auto_key=True,
 )
+
+
+class GetDashMetrics(object):
+    def on_get(self, req, resp):
+        eight_hours_ago = (
+            time.time() - float(req.params.get("last_n_hours", 8)) * 60 * 60
+        )
+        long_running_if_greater_than = (
+            time.time() - float(req.params.get("long_running_n_hours", 1)) * 60 * 60
+        )
+
+        # Fetch logs from the last 8 hours
+
+        data_by_id = {}
+
+        for _, log in LOG_INDEX.search(
+            {
+                "app_name": req.params["app_name"],
+                "timestamp": {"$gte": eight_hours_ago},
+            },
+            sort_by="timestamp",
+            page=1,
+            page_size=1000,
+        ):
+            if log["u_id"] not in data_by_id:
+                data_by_id[log["u_id"]] = {
+                    "logs": [],
+                    "ml_inputs_outputs": [],
+                    "stage_wise_times": {},
+                    "success": None,
+                    "failed": None,
+                    "in_process": None,
+                    "long_running": False,
+                }
+
+            data_by_id[log["u_id"]]["logs"].append(log)
+
+        # Fetch metrics from the last 8 hours
+        METRICS_DATA = METRICS_INDEX.search(
+            {
+                "app_name": req.params["app_name"],
+                "timestamp": {"$gte": eight_hours_ago},
+            },
+            sort_by="timestamp",
+            page=1,
+            page_size=1000,
+        )
+
+        for _, ml_inputs_outputs in ML_INPUTS_OUTPUTS_INDEX.search(
+            {
+                "app_name": req.params["app_name"],
+                "timestamp": {"$gte": eight_hours_ago},
+            },
+            sort_by="timestamp",
+            page=1,
+            page_size=1000,
+        ):
+            if ml_inputs_outputs["u_id"] not in data_by_id:
+                data_by_id[log["u_id"]] = {
+                    "logs": [],
+                    "ml_inputs_outputs": [],
+                    "stage_wise_times": {},
+                }
+
+            data_by_id[log["u_id"]]["ml_inputs_outputs"].append(ml_inputs_outputs)
+
+        # Calculate stage wise timers
+        for u_id, data in data_by_id.items():
+            stage_timers = {}
+            logs = data["logs"]
+            for log in logs:
+                stage = log["stage"]
+                if stage not in stage_timers:
+                    stage_timers[stage] = {
+                        "start": log["timestamp"],
+                        "end": log["timestamp"],
+                    }
+                else:
+                    stage_timers[stage]["end"] = log["timestamp"]
+
+            if logs:
+                if logs[-1]["level"] == "ERROR":
+                    data_by_id[u_id]["failed"] = True
+                elif logs[-1]["messages"][0] == "Stage succeeded":
+                    data_by_id[u_id]["success"] = True
+                elif time.time() - logs[-1]["timestamp"] > long_running_if_greater_than:
+                    data_by_id[u_id]["long_running"] = True
+                else:
+                    data_by_id[u_id]["in_process"] = True
+
+            if stage_timers:
+                data_by_id[u_id]["stage_wise_times"] = stage_timers
+
+        resp.media = {
+            "success": True,
+            "data_by_uid": data_by_id,
+            "metrics": METRICS_DATA,
+        }
+        resp.status = falcon.HTTP_200
 
 
 class AppNames(object):
@@ -75,23 +176,6 @@ class AddLogs(object):
         resp.media = {"success": True, "id": id}
         resp.status = falcon.HTTP_200
 
-    def on_get(self, req, resp):
-        from_time = time.time() - (int(req.params.get("last_n_hours", 8)) * 60 * 60)
-
-        app_name = req.params["app_name"]
-
-        logs = []
-        for _, log_data in LOG_INDEX.search(
-            query={"app_name": app_name, "timestamp": {"$gt": from_time}},
-            sort_by="timestamp",
-            reversed_sort=True,
-            page=1,
-        ):
-            logs.append(log_data)
-
-        resp.media = logs
-        resp.status = falcon.HTTP_200
-
 
 class AddMetrics(object):
     def on_post(self, req, resp):
@@ -100,44 +184,12 @@ class AddMetrics(object):
         resp.media = {"success": True, "id": id}
         resp.status = falcon.HTTP_200
 
-    def on_get(self, req, resp):
-        from_time = time.time() - (int(req.params.get("last_n_hours", 8)) * 60 * 60)
-
-        app_name = req.params["app_name"]
-
-        logs = []
-        for _, log_data in METRICS_INDEX.search(
-            query={"app_name": app_name, "timestamp": {"$gt": from_time}},
-            sort_by="timestamp",
-            reversed_sort=True,
-            page=1,
-        ):
-            logs.append(log_data)
-        resp.media = logs
-        resp.status = falcon.HTTP_200
-
 
 class AddMLInputsOutputs(object):
     def on_post(self, req, resp):
         data = req.media
         id = ML_INPUTS_OUTPUTS_INDEX.add(data)
         resp.media = {"success": True, "id": id}
-        resp.status = falcon.HTTP_200
-
-    def on_get(self, req, resp):
-        from_time = time.time() - (int(req.params.get("last_n_hours", 8)) * 60 * 60)
-
-        app_name = req.params["app_name"]
-
-        logs = []
-        for _, log_data in ML_INPUTS_OUTPUTS_INDEX.search(
-            query={"app_name": app_name, "timestamp": {"$gt": from_time}},
-            sort_by="timestamp",
-            reversed_sort=True,
-            page=1,
-        ):
-            logs.append(log_data)
-        resp.media = logs
         resp.status = falcon.HTTP_200
 
 
@@ -152,6 +204,7 @@ def main(port=8080):
     app.add_route("/metrics", AddMetrics())
     app.add_route("/ml_inputs_outputs", AddMLInputsOutputs())
     app.add_route("/app_names", AppNames())
+    app.add_route("/get_dash_metrics", GetDashMetrics())
 
     import gunicorn.app.base
 

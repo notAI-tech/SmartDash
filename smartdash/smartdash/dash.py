@@ -3,160 +3,43 @@ import streamlit as st
 import pandas as pd
 import requests
 import os
-import sys
 import json
 import plotly.express as px
-import plotly.graph_objects as go
 from datetime import datetime
 
 SERVER_URL = os.getenv("SMARTDASH_SERVER_URL")
 
 if not SERVER_URL:
-    print("--server_url is must for --dash")
+    print("--server_url is required for --dash")
     quit()
 
-# Function to fetch logs data
-def fetch_logs(app_name, last_n_hours):
-    logs_data = requests.get(
-        f"{SERVER_URL}/logs?app_name={app_name}&last_n_hours={last_n_hours}"
+
+# Function to fetch data
+def fetch_dash_data(app_name, last_n_hours, long_running_n_hours=1):
+    data = requests.get(
+        f"{SERVER_URL}/get_dash_metrics?app_name={app_name}&last_n_hours={last_n_hours}&long_running_n_hours={long_running_n_hours}"
     ).json()
-    # Convert timestamp to datetime format
-    for log in logs_data:
-        log["timestamp"] = datetime.fromtimestamp(log["timestamp"])
-    return logs_data
+
+    return data["data_by_uid"], data["metrics"]
 
 
-# Function to fetch logs data
-def fetch_ml_inputs_outputs(app_name, last_n_hours):
-    logs_data = requests.get(
-        f"{SERVER_URL}/ml_inputs_outputs?app_name={app_name}&last_n_hours={last_n_hours}"
-    ).json()
-    # Convert timestamp to datetime format
-    for log in logs_data:
-        log["timestamp"] = datetime.fromtimestamp(log["timestamp"])
-    return logs_data
+def get_all_tags_levels_stages(data_by_uid):
+    tags = set()
+    levels = set()
+    stages = set()
 
+    for uid, data in data_by_uid.items():
+        for log in data["logs"]:
+            tags.update(log["tags"])
+            levels.add(log["level"])
+            stages.add(log["stage"])
 
-# Function to fetch timers data
-def fetch_timers(app_name, last_n_hours):
-    timers_data = requests.get(
-        f"{SERVER_URL}/timers?app_name={app_name}&last_n_hours={last_n_hours}"
-    ).json()
-    return timers_data
-
-
-# Function to group timers data by u_id
-def group_timers(timers_data):
-    grouped_timers = {}
-    for timer in timers_data:
-        u_id = timer["u_id"]
-        if u_id not in grouped_timers:
-            grouped_timers[u_id] = []
-        grouped_timers[u_id].append(timer)
-    return grouped_timers
-
-
-# Function to categorize timers data
-def categorize_timers(grouped_timers):
-    categories = {
-        "finished_no_failed": 0,
-        "finished_failed": 0,
-        "not_finished_no_failed": 0,
-        "not_finished_failed": 0,
-    }
-    for u_id, timers in grouped_timers.items():
-        finished = any(timer["stage"] == "finished" for timer in timers)
-        failed = any(timer["failed"] == 1 for timer in timers)
-
-        if finished and not failed:
-            categories["finished_no_failed"] += 1
-        elif finished and failed:
-            categories["finished_failed"] += 1
-        elif not finished and not failed:
-            categories["not_finished_no_failed"] += 1
-        else:
-            categories["not_finished_failed"] += 1
-    return categories
-
-
-# Function to get u_ids for finished_no_failed and finished_failed categories
-def get_finished_u_ids(grouped_timers):
-    finished_no_failed_u_ids = []
-    finished_failed_u_ids = []
-    for u_id, timers in grouped_timers.items():
-        finished = any(timer["stage"] == "finished" for timer in timers)
-        failed = any(timer["failed"] == 1 for timer in timers)
-
-        if finished and not failed:
-            finished_no_failed_u_ids.append(u_id)
-        elif finished and failed:
-            finished_failed_u_ids.append(u_id)
-    return finished_no_failed_u_ids, finished_failed_u_ids
-
-
-def calculate_time_per_stage(
-    grouped_timers, finished_no_failed_u_ids, finished_failed_u_ids
-):
-    unique_stages = set()
-    for timers in grouped_timers.values():
-        for timer in timers:
-            unique_stages.add(timer["stage"])
-
-    time_per_stage = []
-    for u_id, timers in grouped_timers.items():
-        if u_id in finished_no_failed_u_ids or u_id in finished_failed_u_ids:
-            stage_times = {stage: 0 for stage in unique_stages}
-            stage_times["u_id"] = u_id
-            stage_start_times = {}
-
-            for timer in timers:
-                stage = timer["stage"]
-                timestamp = timer["timestamp"]
-
-                if stage in stage_start_times:
-                    stage_times[stage] += timestamp - stage_start_times[stage]
-                    del stage_start_times[stage]
-                else:
-                    stage_start_times[stage] = timestamp
-
-            time_per_stage.append(stage_times)
-
-    return time_per_stage
-
-
-# Function to calculate average and median time taken for all unique stage names from timers data
-def calculate_stage_times(timers_data):
-    stages = {}
-    for timer in timers_data:
-        stage = timer["stage"]
-        if stage not in stages:
-            stages[stage] = []
-        stages[stage].append(timer["timestamp"])
-
-    stage_times = []
-    for stage, timestamps in stages.items():
-        timestamps.sort()
-        time_diffs = [
-            (timestamps[i + 1] - timestamps[i]) for i in range(len(timestamps) - 1)
-        ]
-        avg_time = sum(time_diffs) / len(time_diffs)
-        median_time = (
-            time_diffs[len(time_diffs) // 2]
-            if len(time_diffs) % 2 == 1
-            else (
-                time_diffs[len(time_diffs) // 2 - 1] + time_diffs[len(time_diffs) // 2]
-            )
-            / 2
-        )
-        stage_times.append(
-            {"stage": stage, "avg_time": avg_time, "median_time": median_time}
-        )
-    return stage_times
+    return sorted(tags), sorted(levels), sorted(stages)
 
 
 # Main function to run the Streamlit app
 def main():
-    st.set_page_config(page_title="SmartDash", layout="wide")  # Add layout parameter
+    st.set_page_config(page_title="SmartDash", layout="wide")
 
     st.sidebar.title("SmartDash - App Dashboard")
 
@@ -171,71 +54,119 @@ def main():
         "Select Time Range", ["8 hours", "12 hours", "Last day", "Last week"], index=0
     )
 
+    in_process_range = st.sidebar.selectbox(
+        "Highlight long running uids", ["1 hour", "15 min", "30 min"], index=0
+    )
+
     time_mapping = {"8 hours": 8, "12 hours": 12, "Last day": 24, "Last week": 168}
     last_n_hours = time_mapping[time_range]
 
-    # Fetch and process timers data
-    timers_data = fetch_timers(app_name, last_n_hours)
-    grouped_timers = group_timers(timers_data)
-    categories = categorize_timers(grouped_timers)
+    data_by_uid, _ = fetch_dash_data(app_name, last_n_hours)
 
-    # Get u_ids for finished_no_failed and finished_failed categories
-    finished_no_failed_u_ids, finished_failed_u_ids = get_finished_u_ids(grouped_timers)
+    all_tags, all_levels, all_stages = get_all_tags_levels_stages(data_by_uid)
 
-    # Calculate total time taken for each u_id and create a DataFrame
-    time_per_stage = calculate_time_per_stage(
-        grouped_timers, finished_no_failed_u_ids, finished_failed_u_ids
+    # Add filters in the sidebar
+    st.sidebar.markdown("## Filter Logs")
+    filter_tags = st.sidebar.multiselect("Tags", all_tags)
+    filter_level = st.sidebar.selectbox("Level", ["All"] + all_levels, index=0)
+    filter_stage = st.sidebar.selectbox("Stage", ["All"] + all_stages, index=0)
+    filter_uid = st.sidebar.text_input("UID")
+
+    # Calculate total time per unique ID
+    total_times = {}
+    for uid, data in data_by_uid.items():
+        if data["logs"]:
+            first_log_time = data["logs"][0]["timestamp"]
+            last_log_time = data["logs"][-1]["timestamp"]
+            total_times[uid] = last_log_time - first_log_time
+
+    # Create a pie chart showing the distribution of times taken by each stage
+    stage_times = {}
+    for uid, data in data_by_uid.items():
+        for stage, times in data["stage_wise_times"].items():
+            if stage not in stage_times:
+                stage_times[stage] = times["end"] - times["start"]
+            else:
+                stage_times[stage] += times["end"] - times["start"]
+
+    stage_time_pie = px.pie(
+        values=list(stage_times.values()),
+        names=list(stage_times.keys()),
+        title="Time distribution by stage",
     )
-    time_per_stage_df = pd.DataFrame(time_per_stage)
 
-    # Create a list of graphs
-    graphs = []
-
-    # Add the pie chart for Timers Categorization to the list
-    fig = px.pie(
-        names=categories.keys(),
-        values=categories.values(),
-        title="Timers Categorization",
-    )
-    fig.update_traces(textinfo="percent+label")
-    graphs.append(fig)
-
-    fig = go.Figure()
-    # Add the line chart for Total Time Taken per U_ID to the list
-    for stage in time_per_stage_df.columns:
-        if stage != "u_id":
-            fig.add_trace(
-                go.Scatter(
-                    x=time_per_stage_df["u_id"], y=time_per_stage_df[stage], name=stage
-                )
+    # Create a line chart showing the time taken by each stage with unique IDs on the x-axis and time taken on the y-axis
+    line_chart_data = []
+    for uid, data in data_by_uid.items():
+        for stage, times in data["stage_wise_times"].items():
+            line_chart_data.append(
+                {
+                    "uid": uid,
+                    "stage": stage,
+                    "time_taken": times["end"] - times["start"],
+                }
             )
 
-    # Add a line for the total time
-    # fig.add_trace(go.Scatter(x=total_times_df["u_id"], y=total_times_df["total_time"], name="Total Time"))
-
-    fig.update_layout(
-        title="Time Taken per Stage and Total Time",
-        xaxis_title="U_ID",
-        yaxis_title="Time",
+    line_chart_df = pd.DataFrame(line_chart_data)
+    stage_time_line = px.line(
+        line_chart_df,
+        x="uid",
+        y="time_taken",
+        color="stage",
+        title="Time taken by each stage",
     )
-    graphs.append(fig)
 
-    # Display the graphs in columns
+    # Pie chart showing number of failed, success, and in-process uids
+    metrics_pie = px.pie(
+        values=[
+            sum([1 for uid, data in data_by_uid.items() if data["success"]]),
+            sum([1 for uid, data in data_by_uid.items() if data["in_process"]]),
+            sum([1 for uid, data in data_by_uid.items() if data["failed"]]),
+            sum([1 for uid, data in data_by_uid.items() if data["long_running"]]),
+        ],
+        names=["Success", "In Process", "Failed", "Long running"],
+        title="Uids by Status",
+    )
+
+    graphs = [stage_time_pie, stage_time_line, metrics_pie]
+
     cols = st.columns(2, gap="small")
     for i, graph in enumerate(graphs):
         cols[i % 2].write(graph)
 
-    # Make logs datatable collapsible
     with st.expander("Show/hide logs"):
-        logs_data = fetch_logs(app_name, last_n_hours)
-        logs_df = pd.DataFrame(logs_data)
-        st.write(logs_df)
+        logs_data = []
+        for uid, data in data_by_uid.items():
+            logs_data.extend(data["logs"])
+            if data["success"]:
+                logs_data[-1]["status"] = "Success"
+            elif data["failed"]:
+                logs_data[-1]["status"] = "Failed"
+            elif data["in_process"]:
+                logs_data[-1]["status"] = "In Process"
+            elif data["long_running"]:
+                logs_data[-1]["status"] = "Long running"
+            else:
+                logs_data[-1]["status"] = "Unknown"
 
-    # Make logs datatable collapsible
-    with st.expander("Show/hide ML Inputs Outputs"):
-        ml_io_data = fetch_ml_inputs_outputs(app_name, last_n_hours)
-        ml_io_df = pd.DataFrame(ml_io_data)
-        st.write(ml_io_df)
+        # Convert timestamp to datetime format
+        for log in logs_data:
+            log["timestamp"] = datetime.fromtimestamp(log["timestamp"])
+
+        # Apply filters
+        if filter_tags:
+            logs_data = [
+                log for log in logs_data if set(log["tags"]) & set(filter_tags)
+            ]
+        if filter_level != "All":
+            logs_data = [log for log in logs_data if log["level"] == filter_level]
+        if filter_stage != "All":
+            logs_data = [log for log in logs_data if log["stage"] == filter_stage]
+        if filter_uid:
+            logs_data = [log for log in logs_data if log["u_id"] == filter_uid]
+
+        logs_df = pd.DataFrame(logs_data)
+        st.dataframe(logs_df)
 
 
 if __name__ == "__main__":
