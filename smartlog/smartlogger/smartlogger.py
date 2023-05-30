@@ -3,6 +3,7 @@ import sys
 import time
 import uuid
 import logging
+import traceback
 from liteindex import DefinedIndex
 
 
@@ -165,8 +166,15 @@ class SmartLogger:
     def error(self, id, *messages, stage=None, tags=[]):
         self._log(id, "ERROR", *messages, stage=stage, tags=tags)
 
-    def exception(self, id, exc, *messages, stage=None, tags=[]):
-        messages = (str(exc),) + messages
+    def exception(self, id, *messages, stage=None, tags=[]):
+        exc_info = sys.exc_info()
+        traceback_string = "".join(traceback.format_exception(*exc_info))
+
+        messages = (
+            f"\nException Info: {exc_info}",
+            f"\nTraceback:\n{traceback.format_exception(*exc_info)}",
+            *messages,
+        )
         self._log(id, "EXCEPTION", *messages, stage=stage, tags=tags)
 
     def ml_inputs_outputs(self, id, inputs, outputs, model_type, stage=None, tags=[]):
@@ -243,9 +251,9 @@ class SmartLogger:
                 self.id, *messages, stage=self.stage, tags=self.tags + tags
             )
 
-        def exception(self, exc, *messages, tags=[]):
+        def exception(self, *messages, tags=[]):
             self.parent_logger.exception(
-                self.id, exc, *messages, stage=self.stage, tags=self.tags + tags
+                self.id, *messages, stage=self.stage, tags=self.tags + tags
             )
 
         def ml_inputs_outputs(self, inputs, outputs, tags=[]):
