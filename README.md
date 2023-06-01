@@ -25,8 +25,10 @@ smartlogger --save_dir ./ --server_url "http://localhost:8080"
 
 ```
 # Start smartdash server
-smartdash --dash --server_url "http://localhost:8080" --port 6788 --save_dir ./
+smartdash --server --port 6789 --save_dir ./
 
 # Start smartdash dashboard
-smartdash --dash --server_url "http://localhost:8080" --port 6788 --save_dir ./
+smartdash --dash --server_url "http://localhost:6789" --port 6788 --save_dir ./
+
+# access the dashboard at localhost:6788
 ```
