@@ -18,10 +18,10 @@ URL = "https://github.com/notAI-tech/smartdash"
 EMAIL = "praneeth@bpraneeth.com"
 AUTHOR = "BEDAPUDI PRANEETH"
 REQUIRES_PYTHON = ">=3.6.0"
-VERSION = "0.0.1.dev7"
+VERSION = "0.0.1.dev8"
 
 # What packages are required for this module to be executed?
-REQUIRED = ["requests", "liteindex", "streamlit", "plotly"]
+REQUIRED = ["requests", "liteindex", "streamlit", "plotly", "gevent", "falcon", "gunicorn"]
 
 # What packages are optional?
 EXTRAS = {
