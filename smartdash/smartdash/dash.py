@@ -53,7 +53,7 @@ def main():
         )
         time_range = st.sidebar.selectbox(
             "Select Time Range",
-            ["8 hours", "12 hours", "Last day", "Last week"],
+            ["8 hours", "12 hours", "Last day", "Last week", "All time"],
             index=0,
         )
 
@@ -69,6 +69,7 @@ def main():
             "1 hour": 1,
             "15 min": 0.25,
             "30 min": 0.5,
+            "All time": 10000000,
         }
 
         long_running_n_hours = time_mapping[long_running_range]
