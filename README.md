@@ -12,7 +12,7 @@ stage = logger.Stage(unique_id, stage_name, tags=optional_list_of_tags)
 # stage.debug()/ info()/ exception (logs exc info)/ error
 # depending on whether it succeeded or not
 stage.success()
-stage.failed() 
+stage.failed()
 ```
 
 ```bash
