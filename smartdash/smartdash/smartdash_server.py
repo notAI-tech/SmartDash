@@ -115,6 +115,10 @@ class GetDashMetrics(object):
                     "logs": [],
                     "ml_inputs_outputs": [],
                     "stage_wise_times": {},
+                    "success": None,
+                    "failed": None,
+                    "in_process": None,
+                    "long_running": False,
                 }
 
             data_by_id[log["u_id"]]["ml_inputs_outputs"].append(ml_inputs_outputs)

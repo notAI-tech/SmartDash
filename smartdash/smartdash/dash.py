@@ -137,24 +137,32 @@ def main():
             graphs.append(stage_time_line)
 
         if data_by_uid:
-            # Pie chart showing number of failed, success, and in-process uids
-            metrics_pie = px.pie(
-                values=[
-                    sum([1 for uid, data in data_by_uid.items() if data["success"]]),
-                    sum([1 for uid, data in data_by_uid.items() if data["in_process"]]),
-                    sum([1 for uid, data in data_by_uid.items() if data["failed"]]),
-                    sum(
-                        [1 for uid, data in data_by_uid.items() if data["long_running"]]
-                    ),
-                ],
-                names=["Success", "In Process", "Failed", "Long running"],
-                title="Uids by Status",
-            )
+            metrics_df = pd.DataFrame({
+                    "status": ["Success" if data["success"] 
+                                else "In Process" if data["in_process"]
+                                else "Failed" if data["failed"] 
+                                else "Long running"
+                                for uid, data in data_by_uid.items()],
+                })
+
+            metrics_pie = px.pie(metrics_df, 
+                        names='status', 
+                        title="Uids by Status", 
+                        color='status',
+                        color_discrete_map={
+                            "Success": "green",
+                            "In Process": "yellow",
+                            "Failed": "red",
+                            "Long running": "lightcoral"
+                        })
+            
+            metrics_pie.update_traces(textposition='inside', textinfo='percent+label')
+
             graphs.append(metrics_pie)
 
         cols = st.columns(2, gap="small")
         for i, graph in enumerate(graphs):
-            cols[i % 2].write(graph)
+            cols[i % 2].plotly_chart(graph)
 
         with st.expander("Show/hide logs"):
             logs_data = []
@@ -196,6 +204,7 @@ def main():
                 st.dataframe(logs_df)
 
     except Exception as e:
+        print(e)
         st.warning(
             "No Apps uploaded logs yet. Please upload logs using the smartlogger CLI."
         )
