@@ -2,7 +2,6 @@ import os
 import sys
 import time
 import uuid
-import logging
 import traceback
 from liteindex import DefinedIndex
 
@@ -283,13 +282,13 @@ if __name__ == "__main__":
 
         def create_some_log(logger):
             u_id = uuid.uuid4()
-            for stage_name in ["preprocessing", "inference", "postprocessing"]:
+            for stage_name in ["preprocessing", "inference1", "inference2", "inference3", "inference5", "postprocessing"]:
                 stage = logger.Stage(
                     u_id, stage_name, tags=[f"tag.{random.randint(0, 10)}"]
                 )
 
-                if stage_name == "inference":
-                    stage.metric("accuracy", random.randint(0, 100))
+                if "inference" in stage_name and random.choice([1, 2, 3]) == 1:
+                    continue
 
                 stage.debug("test debug", 2, 3, 4, tags=["test:debug"])
                 time.sleep(random.uniform(0.0001, 0.1))
