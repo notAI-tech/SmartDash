@@ -1,4 +1,3 @@
-# Importing required libraries
 import streamlit as st
 import pandas as pd
 import requests
@@ -40,6 +39,13 @@ def get_all_tags_levels_stages(data_by_uid):
 # Main function to run the Streamlit app
 def main():
     st.set_page_config(page_title="SmartDash", layout="wide")
+    hide_streamlit_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            </style>
+            """
+    st.markdown(hide_streamlit_style, unsafe_allow_html=True) 
 
     st.sidebar.title("SmartDash - App Dashboard")
 
