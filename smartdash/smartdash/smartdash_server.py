@@ -54,6 +54,10 @@ METRICS_INDEX = DefinedIndex(
     auto_key=True,
 )
 
+class HealthCheck(object):
+    def on_get(self, req, resp):
+        resp.media = {"status": "ok"}
+
 
 class GetDashMetrics(object):
     def on_get(self, req, resp):
@@ -209,6 +213,7 @@ def main(port=8080):
     app.add_route("/ml_inputs_outputs", AddMLInputsOutputs())
     app.add_route("/app_names", AppNames())
     app.add_route("/get_dash_metrics", GetDashMetrics())
+    app.add_route("/health", HealthCheck())
 
     import gunicorn.app.base
 
