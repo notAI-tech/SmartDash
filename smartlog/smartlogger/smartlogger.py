@@ -54,11 +54,13 @@ def _upload_to_smartdash(log_dir, url, batch_size=100):
 
                     index.delete(keys)
                     backoff_time = 1
-                    print(f"Uploaded {len(batch)} {index_type} to smartdash")
                 except:
+                    if len(keys) >= 50000:
+                        index.delete(keys[:50000])
+                        keys = keys[50000:]
+
                     backoff_time = min(backoff_time * 2, 60)
                     time.sleep(backoff_time)
-                    print(f"Failed to upload {index_type} to smartdash")
             else:
                 break
 
