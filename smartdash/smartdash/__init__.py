@@ -15,6 +15,11 @@ def cli():
     parser.add_argument(
         "--save_dir", type=str, help="save directory for smartdash server"
     )
+    parser.add_argument(
+        "--base_url_path",
+        type=str,
+        help="base url path for use with --dash, e.g. /smartdash",
+    )
 
     args = parser.parse_args()
 
@@ -47,6 +52,8 @@ def cli():
                     "false",
                     "--server.port",
                     str(args.port),
+                    "--server.baseUrlPath",
+                    "" if args.base_url_path is None else args.base_url_path,
                 ]
             )
         )

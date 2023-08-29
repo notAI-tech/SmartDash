@@ -54,6 +54,7 @@ METRICS_INDEX = DefinedIndex(
     auto_key=True,
 )
 
+
 class HealthCheck(object):
     def on_get(self, req, resp):
         resp.media = {"status": "ok"}

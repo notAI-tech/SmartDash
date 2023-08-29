@@ -45,7 +45,7 @@ def main():
             footer {visibility: hidden;}
             </style>
             """
-    st.markdown(hide_streamlit_style, unsafe_allow_html=True) 
+    st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
     st.sidebar.title("SmartDash - App Dashboard")
 
@@ -143,26 +143,35 @@ def main():
             graphs.append(stage_time_line)
 
         if data_by_uid:
-            metrics_df = pd.DataFrame({
-                    "status": ["Success" if data["success"] 
-                                else "In Process" if data["in_process"]
-                                else "Failed" if data["failed"] 
-                                else "Long running"
-                                for uid, data in data_by_uid.items()],
-                })
+            metrics_df = pd.DataFrame(
+                {
+                    "status": [
+                        "Success"
+                        if data["success"]
+                        else "In Process"
+                        if data["in_process"]
+                        else "Failed"
+                        if data["failed"]
+                        else "Long running"
+                        for uid, data in data_by_uid.items()
+                    ],
+                }
+            )
 
-            metrics_pie = px.pie(metrics_df, 
-                        names='status', 
-                        title="Uids by Status", 
-                        color='status',
-                        color_discrete_map={
-                            "Success": "green",
-                            "In Process": "yellow",
-                            "Failed": "red",
-                            "Long running": "lightcoral"
-                        })
-            
-            metrics_pie.update_traces(textposition='inside', textinfo='percent+label')
+            metrics_pie = px.pie(
+                metrics_df,
+                names="status",
+                title="Uids by Status",
+                color="status",
+                color_discrete_map={
+                    "Success": "green",
+                    "In Process": "yellow",
+                    "Failed": "red",
+                    "Long running": "lightcoral",
+                },
+            )
+
+            metrics_pie.update_traces(textposition="inside", textinfo="percent+label")
 
             graphs.append(metrics_pie)
 
