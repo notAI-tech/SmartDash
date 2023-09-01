@@ -114,7 +114,14 @@ class SmartLogger:
 
         self.metrics_index = DefinedIndex(
             f"{self.name}_metrics",
-            schema={"metric": "", "value": 0, "timestamp": 0},
+            schema={
+                "u_id": "",
+                "metric": "",
+                "value": 0,
+                "timestamp": 0,
+                "stage": "",
+                "tags": [],
+            },
             db_path=db_path,
             auto_key=True,
         )
@@ -198,9 +205,16 @@ class SmartLogger:
             }
         )
 
-    def metric(self, metric, value):
+    def metric(self, id, metric, value, stage=None, tags=[]):
         self.metrics_index.add(
-            {"metric": metric, "value": value, "timestamp": time.time()}
+            {
+                "u_id": str(id),
+                "metric": metric,
+                "value": value,
+                "timestamp": time.time(),
+                "stage": stage,
+                "tags": tags,
+            }
         )
 
     def Stage(self, id, stage_name, tags=[], model_type=""):
@@ -267,8 +281,10 @@ class SmartLogger:
                 tags=self.tags + tags,
             )
 
-        def metric(self, metric, value):
-            self.parent_logger.metric(metric, value)
+        def metric(self, metric, value, tags=[]):
+            self.parent_logger.metric(
+                self.id, metric, value, stage=self.stage, tags=self.tags + tags
+            )
 
 
 if __name__ == "__main__":
@@ -284,7 +300,14 @@ if __name__ == "__main__":
 
         def create_some_log(logger):
             u_id = uuid.uuid4()
-            for stage_name in ["preprocessing", "inference1", "inference2", "inference3", "inference5", "postprocessing"]:
+            for stage_name in [
+                "preprocessing",
+                "inference1",
+                "inference2",
+                "inference3",
+                "inference5",
+                "postprocessing",
+            ]:
                 stage = logger.Stage(
                     u_id, stage_name, tags=[f"tag.{random.randint(0, 10)}"]
                 )
