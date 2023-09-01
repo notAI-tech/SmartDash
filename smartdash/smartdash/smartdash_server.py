@@ -49,7 +49,14 @@ ML_INPUTS_OUTPUTS_INDEX = DefinedIndex(
 
 METRICS_INDEX = DefinedIndex(
     f"metrics_index",
-    schema={"app_name": "", "metric": "", "value": 0, "timestamp": 0},
+    schema={
+        "u_id": "",
+        "metric": "",
+        "value": 0,
+        "timestamp": 0,
+        "stage": "",
+        "tags": [],
+    },
     db_path=db_path,
     auto_key=True,
 )
