@@ -312,6 +312,8 @@ if __name__ == "__main__":
                     u_id, stage_name, tags=[f"tag.{random.randint(0, 10)}"]
                 )
 
+                stage.metric("metric1", random.randint(0, 100) / 100)
+
                 if "inference" in stage_name and random.choice([1, 2, 3]) == 1:
                     continue
 

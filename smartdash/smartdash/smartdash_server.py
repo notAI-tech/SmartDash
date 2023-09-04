@@ -50,6 +50,7 @@ ML_INPUTS_OUTPUTS_INDEX = DefinedIndex(
 METRICS_INDEX = DefinedIndex(
     f"metrics_index",
     schema={
+        "app_name": "",
         "u_id": "",
         "metric": "",
         "value": 0,
@@ -92,6 +93,7 @@ class GetDashMetrics(object):
             if log["u_id"] not in data_by_id:
                 data_by_id[log["u_id"]] = {
                     "logs": [],
+                    "metrics": [],
                     "ml_inputs_outputs": [],
                     "stage_wise_times": {},
                     "success": None,
@@ -103,7 +105,8 @@ class GetDashMetrics(object):
             data_by_id[log["u_id"]]["logs"].append(log)
 
         # Fetch metrics from the last 8 hours
-        METRICS_DATA = METRICS_INDEX.search(
+
+        for _, metric in METRICS_INDEX.search(
             {
                 "app_name": req.params["app_name"],
                 "timestamp": {"$gte": eight_hours_ago},
@@ -111,7 +114,19 @@ class GetDashMetrics(object):
             sort_by="timestamp",
             page=1,
             page_size=1000,
-        )
+        ):
+            if metric["u_id"] not in data_by_id:
+                data_by_id[metric["u_id"]] = {
+                    "logs": [],
+                    "metrics": [],
+                    "ml_inputs_outputs": [],
+                    "stage_wise_times": {},
+                    "success": None,
+                    "failed": None,
+                    "in_process": None,
+                    "long_running": False,
+                }
+            data_by_id[metric["u_id"]]["metrics"].append(metric)
 
         for _, ml_inputs_outputs in ML_INPUTS_OUTPUTS_INDEX.search(
             {
@@ -125,6 +140,7 @@ class GetDashMetrics(object):
             if ml_inputs_outputs["u_id"] not in data_by_id:
                 data_by_id[log["u_id"]] = {
                     "logs": [],
+                    "metrics": [],
                     "ml_inputs_outputs": [],
                     "stage_wise_times": {},
                     "success": None,
@@ -162,11 +178,7 @@ class GetDashMetrics(object):
             if stage_timers:
                 data_by_id[u_id]["stage_wise_times"] = stage_timers
 
-        resp.media = {
-            "success": True,
-            "data_by_uid": data_by_id,
-            "metrics": METRICS_DATA,
-        }
+        resp.media = {"success": True, "data_by_uid": data_by_id}
         resp.status = falcon.HTTP_200
 
 

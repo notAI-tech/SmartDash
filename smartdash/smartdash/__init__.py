@@ -52,8 +52,9 @@ def cli():
                     "false",
                     "--server.port",
                     str(args.port),
-                    "--server.baseUrlPath",
-                    "" if args.base_url_path is None else args.base_url_path,
+                    f"--server.baseUrlPath {args.base_url_path}"
+                    if args.base_url_path
+                    else "",
                 ]
             )
         )

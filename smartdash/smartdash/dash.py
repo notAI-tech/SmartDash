@@ -19,7 +19,7 @@ def fetch_dash_data(app_name, last_n_hours, long_running_n_hours=1):
         f"{SERVER_URL}/get_dash_metrics?app_name={app_name}&last_n_hours={last_n_hours}&long_running_n_hours={long_running_n_hours}"
     ).json()
 
-    return data["data_by_uid"], data["metrics"]
+    return data["data_by_uid"]
 
 
 def get_all_tags_levels_stages(data_by_uid):
@@ -81,7 +81,7 @@ def main():
         long_running_n_hours = time_mapping[long_running_range]
         last_n_hours = time_mapping[time_range]
 
-        data_by_uid, _ = fetch_dash_data(app_name, last_n_hours, long_running_n_hours)
+        data_by_uid = fetch_dash_data(app_name, last_n_hours, long_running_n_hours)
 
         all_tags, all_levels, all_stages = get_all_tags_levels_stages(data_by_uid)
 
@@ -96,11 +96,25 @@ def main():
 
         # Calculate total time per unique ID
         total_times = {}
+        logger_metric_name_wise_values = {}
         for uid, data in data_by_uid.items():
             if data["logs"]:
                 first_log_time = data["logs"][0]["timestamp"]
                 last_log_time = data["logs"][-1]["timestamp"]
                 total_times[uid] = last_log_time - first_log_time
+
+            if data["metrics"]:
+                for metric in data["metrics"]:
+                    if metric["metric"] not in logger_metric_name_wise_values:
+                        logger_metric_name_wise_values[metric["metric"]] = []
+                    logger_metric_name_wise_values[metric["metric"]].append(
+                        {
+                            "uid": uid,
+                            "value": metric["value"],
+                            "timestamp": metric["timestamp"],
+                            "stage": metric["stage"],
+                        }
+                    )
 
         # Create a pie chart showing the distribution of times taken by each stage
         stage_times = {}
@@ -130,6 +144,19 @@ def main():
                         "time_taken": times["end"] - times["start"],
                     }
                 )
+
+        # Create a line chart showing logger_metric_name_wise_values with time stamp on the x-axis and value on the y-axis
+        if logger_metric_name_wise_values:
+            for metric_name, values in logger_metric_name_wise_values.items():
+                line_chart_df = pd.DataFrame(values)
+                line_chart = px.line(
+                    line_chart_df,
+                    x="timestamp",
+                    y="value",
+                    color="uid",
+                    title=f"{metric_name}",
+                )
+                graphs.append(line_chart)
 
         if line_chart_data:
             line_chart_df = pd.DataFrame(line_chart_data)
