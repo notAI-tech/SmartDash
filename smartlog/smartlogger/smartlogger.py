@@ -87,7 +87,7 @@ def _upload_to_smartdash(log_dir, url, batch_size=100):
 
 
 class SmartLogger:
-    def __init__(self, name, save_to_dir="./", log_to_console=True):
+    def __init__(self, name, save_to_dir="./", log_to_console=False):
         self.name = name
         self.log_to_console = log_to_console
         os.makedirs(save_to_dir, exist_ok=True)
