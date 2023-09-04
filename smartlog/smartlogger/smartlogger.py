@@ -19,6 +19,8 @@ def upload_to_smartdash():
         "--server_url", type=str, help="Smartdash server URL", required=True
     )
     args = parser.parse_args()
+
+    print(f"Starting sync to {args.server_url}")
     _upload_to_smartdash(args.save_dir, args.server_url)
 
 
@@ -27,6 +29,7 @@ def _upload_to_smartdash(log_dir, url, batch_size=100):
     from glob import glob
 
     def upload_data(name, index_type, db_prefix):
+        last_sync_failed = False
         try:
             index = DefinedIndex(
                 f"{name}_{index_type}",
@@ -48,16 +51,23 @@ def _upload_to_smartdash(log_dir, url, batch_size=100):
 
             if batch:
                 try:
-                    resp = requests.post(f"{url}/{index_type}", json=batch).json()
+                    resp = requests.post(
+                        f"{url}/{index_type}", json=batch, timeout=5
+                    ).json()
                     if not resp["success"] == True:
                         1 / 0
 
                     index.delete(keys)
                     backoff_time = 1
+                    last_sync_failed = False
                 except:
                     if len(keys) >= 50000:
                         index.delete(keys[:50000])
                         keys = keys[50000:]
+
+                    if not last_sync_failed:
+                        print(f"Failed to sync {name} logs to {url}")
+                        last_sync_failed = True
 
                     backoff_time = min(backoff_time * 2, 60)
                     time.sleep(backoff_time)
