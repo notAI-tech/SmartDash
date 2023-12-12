@@ -25,127 +25,144 @@ def upload_to_smartdash():
 
 
 def _upload_to_smartdash(log_dir, url, batch_size=100):
+    import pickle
     import requests
     from glob import glob
 
-    def upload_data(name, index_type, db_prefix):
-        last_sync_failed = False
+    def upload_data(db_file, batch_size=512):
+        name = os.path.splitext(os.path.basename(db_file))[0]
+
         try:
-            index = DefinedIndex(
-                f"{name}_{index_type}",
-                db_path=os.path.join(log_dir, f"{name}_{db_prefix}.db"),
+            logs_index = DefinedIndex(
+                "logs",
+                db_path=os.path.join(log_dir, db_file)
+            )
+
+            key_value_index = DefinedIndex(
+                "key_value",
+                db_path=os.path.join(log_dir, db_file)
             )
         except:
             return
 
+        total_n_logs_popped = 0
+        total_n_key_value_popped = 0
+
         while True:
-            backoff_time = 1
+            logs_index_popped_data = logs_index.pop(n=batch_size)
 
-            batch = []
-            keys = []
+            n_logs_popped = None
+            n_key_value_popped = None
+            
+            if logs_index_popped_data:
+                n_logs_popped = len(logs_index_popped_data)
 
-            for k, v in index.search(n=batch_size):
-                v["app_name"] = name
-                batch.append(v)
-                keys.append(k)
+                for k in logs_index_popped_data:
+                    logs_index_popped_data[k]["app_name"] = name
 
-            if batch:
+
                 try:
                     resp = requests.post(
-                        f"{url}/{index_type}", json=batch, timeout=5
+                        f"{url}/logs", data=pickle.dumps(logs_index_popped_data, protocol=pickle.HIGHEST_PROTOCOL)
                     ).json()
+
+
+                    logs_index_popped_data = None
+
                     if not resp["success"] == True:
-                        1 / 0
+                        1/0
 
-                    index.delete(keys)
-                    backoff_time = 1
-                    last_sync_failed = False
-                except:
-                    if len(keys) >= 50000:
-                        index.delete(keys[:50000])
-                        keys = keys[50000:]
+                except Exception as ex:
+                    pass
+            
+            key_value_index_popped_data = key_value_index.pop(n=batch_size)
 
-                    if not last_sync_failed:
-                        print(f"Failed to sync {name} logs to {url}")
-                        last_sync_failed = True
+            if key_value_index_popped_data:
+                n_key_value_popped = len(key_value_index_popped_data)
 
-                    backoff_time = min(backoff_time * 2, 60)
-                    time.sleep(backoff_time)
-            else:
-                break
+                for k in key_value_index_popped_data:
+                    key_value_index_popped_data[k]["app_name"] = name
+
+
+                try:
+                    resp = requests.post(
+                        f"{url}/key_values", data=pickle.dumps(key_value_index_popped_data, protocol=pickle.HIGHEST_PROTOCOL)
+                    ).json()
+
+
+                    key_value_index_popped_data = None
+
+                    if not resp["success"] == True:
+                        1/0
+
+                except Exception as ex:
+                    pass
+
+            total_n_key_value_popped += n_key_value_popped if n_key_value_popped else 0
+            total_n_logs_popped += n_logs_popped if n_logs_popped else 0
+
+            if not n_logs_popped and not n_key_value_popped:
+                if total_n_logs_popped > 0 or total_n_key_value_popped > 0:
+                    print(f"smartlogger {name}: synced {total_n_logs_popped} logs, {total_n_key_value_popped} key values")
+                return
+
+
 
     while True:
-        db_files_in_dir = glob(os.path.join(log_dir, "*.db"))
-        for db_file in db_files_in_dir:
-            name = "_".join(os.path.basename(db_file).split("_")[:-1])
-
-            upload_data(name, "logs", "logs")
-            upload_data(name, "ml_inputs_outputs", "logs")
-            upload_data(name, "metrics", "logs")
-
+        for db_file in glob(os.path.join(log_dir, "*.db")):
+            upload_data(db_file, batch_size=batch_size)
+            
         time.sleep(int(os.getenv("SYNC_SLEEP", 10)))
 
 
 class SmartLogger:
-    def __init__(self, name, save_to_dir="./", log_to_console=False):
+    def __init__(self, name, dir="./", log_to_console=False):
         self.name = name
         self.log_to_console = log_to_console
-        os.makedirs(save_to_dir, exist_ok=True)
-        db_path = os.path.join(save_to_dir, f"{self.name}_logs.db")
+        
+        os.makedirs(dir, exist_ok=True)
+        db_path = os.path.join(dir, f"{self.name}.db")
 
         self.logs_index = DefinedIndex(
-            f"{self.name}_logs",
+            "logs",
             schema={
-                "u_id": "",
-                "level": "",
-                "messages": [],
-                "timestamp": 0,
-                "stage": "",
-                "tags": [],
+                "u_id": "string",
+                "stage": "string",
+                "level": "string",
+                "messages": "json",
+                "time": "number",
+                "tags": "json",
             },
             db_path=db_path,
-            auto_key=True,
         )
 
-        self.ml_inputs_outputs_index = DefinedIndex(
-            f"{self.name}_ml_inputs_outputs",
+        self.key_value_index = DefinedIndex(
+            "key_value",
             schema={
-                "u_id": "",
-                "inputs": [],
-                "outputs": [],
-                "model_type": "",
-                "timestamp": 0,
-                "stage": "",
-                "tags": [],
+                "u_id": "string",
+                "key": "string",
+                "num_value": "number",
+                "str_value": "string",
+                "other_value": "other",
+                "name": "string",
+                "timestamp": "number",
+                "stage": "string",
+                "tags": "json",
             },
             db_path=db_path,
-            auto_key=True,
-        )
-
-        self.metrics_index = DefinedIndex(
-            f"{self.name}_metrics",
-            schema={
-                "u_id": "",
-                "metric": "",
-                "value": 0,
-                "timestamp": 0,
-                "stage": "",
-                "tags": [],
-            },
-            db_path=db_path,
-            auto_key=True,
         )
 
     def _log(self, id, level, *messages, stage=None, tags=[]):
-        timestamp = time.time()
-        self.logs_index.add(
+        self.logs_index.update(
             {
-                "u_id": str(id),
-                "level": level,
-                "messages": [str(_) for _ in messages],
-                "timestamp": timestamp,
-                "stage": stage,
-                "tags": tags,
+                str(uuid.uuid4()): {
+                    "u_id": str(id),
+                    "stage": stage,
+                    "level": level,
+                    "messages": [str(m) for m in messages],
+                    "time": time.time(),
+                    "tags": tags,
+                }
             }
         )
 
@@ -195,54 +212,37 @@ class SmartLogger:
         )
         self._log(id, "EXCEPTION", *messages, stage=stage, tags=tags)
 
-    def ml_inputs_outputs(self, id, inputs, outputs, model_type, stage=None, tags=[]):
-        if not isinstance(inputs, (list, tuple)):
-            raise ValueError("inputs must be a list or tuple")
-        if not isinstance(outputs, (list, tuple)):
-            raise ValueError("outputs must be a list or tuple")
-        if len(inputs) != len(outputs):
-            raise ValueError("inputs and outputs must be the same length")
-
-        self.ml_inputs_outputs_index.add(
+    def key_value(self, id, key, value, name=None, stage=None, tags=[]):
+        num_value = value if isinstance(value, (int, float)) else None
+        str_value = value if isinstance(value, str) else None
+        other_value = value if not num_value and not str_value else None
+        self.key_value_index.update(
             {
-                "u_id": str(id),
-                "inputs": inputs,
-                "outputs": outputs,
-                "model_type": model_type,
-                "timestamp": time.time(),
-                "stage": stage,
-                "tags": tags,
+                str(uuid.uuid4()): {
+                    "u_id": str(id),
+                    "key": key,
+                    "num_value": num_value,
+                    "str_value": str_value,
+                    "other_value": other_value,
+                    "name": name,
+                    "timestamp": time.time(),
+                    "stage": stage,
+                    "tags": tags,
+                }
             }
         )
 
-    def metric(self, id, metric, value, stage=None, tags=[]):
-        self.metrics_index.add(
-            {
-                "u_id": str(id),
-                "metric": metric,
-                "value": value,
-                "timestamp": time.time(),
-                "stage": stage,
-                "tags": tags,
-            }
-        )
-
-    def Stage(self, id, stage_name, tags=[], model_type=""):
+    def Stage(self, id, stage_name, tags=[]):
         return self.StageConstructor(
-            parent_logger=self,
-            id=id,
-            stage=stage_name,
-            tags=tags,
-            model_type=model_type,
+            parent_logger=self, id=id, stage=stage_name, tags=tags
         )
 
     class StageConstructor:
-        def __init__(self, parent_logger, id, stage, tags=[], model_type=""):
+        def __init__(self, parent_logger, id, stage, tags=[]):
             self.parent_logger = parent_logger
             self.id = str(id)
             self.stage = stage
             self.tags = tags
-            self.model_type = model_type
             self.parent_logger.info(id, "Stage started", stage=stage, tags=tags)
 
         def failed(self, tags=[]):
@@ -281,19 +281,9 @@ class SmartLogger:
                 self.id, *messages, stage=self.stage, tags=self.tags + tags
             )
 
-        def ml_inputs_outputs(self, inputs, outputs, tags=[]):
-            self.parent_logger.ml_inputs_outputs(
-                self.id,
-                inputs,
-                outputs,
-                self.model_type,
-                stage=self.stage,
-                tags=self.tags + tags,
-            )
-
-        def metric(self, metric, value, tags=[]):
-            self.parent_logger.metric(
-                self.id, metric, value, stage=self.stage, tags=self.tags + tags
+        def key_value(self, key, value, name=None, tags=[]):
+            self.parent_logger.key_value(
+                self.id, key, value, name=name, stage=self.stage, tags=self.tags + tags
             )
 
 
@@ -322,7 +312,7 @@ if __name__ == "__main__":
                     u_id, stage_name, tags=[f"tag.{random.randint(0, 10)}"]
                 )
 
-                stage.metric("metric1", random.randint(0, 100) / 100)
+                stage.key_value("metric1", random.randint(0, 100))
 
                 if "inference" in stage_name and random.choice([1, 2, 3]) == 1:
                     continue
@@ -335,12 +325,14 @@ if __name__ == "__main__":
                 else:
                     stage.success()
                     if stage_name == "postprocessing":
-                        stage.ml_inputs_outputs([1, 2, 3], [4, 5, "66"])
+                        stage.key_value(
+                            "model_inputs_and_predictions", ([1, 2, 3], [4, 5, "66"])
+                        )
 
         logger = SmartLogger("analytics")
 
         for _ in range(100):
             create_some_log(logger)
 
-    elif sys.argv[1] == "upload":
+    else:
         upload_to_smartdash()
