@@ -33,14 +33,10 @@ def _upload_to_smartdash(log_dir, url, batch_size=100):
         name = os.path.splitext(os.path.basename(db_file))[0]
 
         try:
-            logs_index = DefinedIndex(
-                "logs",
-                db_path=os.path.join(log_dir, db_file)
-            )
+            logs_index = DefinedIndex("logs", db_path=os.path.join(log_dir, db_file))
 
             key_value_index = DefinedIndex(
-                "key_value",
-                db_path=os.path.join(log_dir, db_file)
+                "key_value", db_path=os.path.join(log_dir, db_file)
             )
         except:
             return
@@ -48,33 +44,47 @@ def _upload_to_smartdash(log_dir, url, batch_size=100):
         total_n_logs_popped = 0
         total_n_key_value_popped = 0
 
+        logs_index_total_len = logs_index.count()
+        key_value_index_total_len = key_value_index.count()
+
+        if logs_index_total_len or key_value_index_total_len:
+            print(
+                f"smartlogger {name}: syncing {logs_index_total_len} logs, {key_value_index_total_len} key values"
+            )
+
+        error_already_printed = False
+
         while True:
             logs_index_popped_data = logs_index.pop(n=batch_size)
 
             n_logs_popped = None
             n_key_value_popped = None
-            
+
             if logs_index_popped_data:
                 n_logs_popped = len(logs_index_popped_data)
 
                 for k in logs_index_popped_data:
                     logs_index_popped_data[k]["app_name"] = name
 
-
                 try:
                     resp = requests.post(
-                        f"{url}/logs", data=pickle.dumps(logs_index_popped_data, protocol=pickle.HIGHEST_PROTOCOL)
+                        f"{url}/logs",
+                        data=pickle.dumps(
+                            logs_index_popped_data, protocol=pickle.HIGHEST_PROTOCOL
+                        ),
                     ).json()
-
 
                     logs_index_popped_data = None
 
                     if not resp["success"] == True:
-                        1/0
+                        1 / 0
 
+                    error_already_printed = False
                 except Exception as ex:
-                    pass
-            
+                    if not error_already_printed:
+                        print(f"smartlogger {name}: error syncing logs: {ex}")
+                        error_already_printed = True
+
             key_value_index_popped_data = key_value_index.pop(n=batch_size)
 
             if key_value_index_popped_data:
@@ -83,17 +93,19 @@ def _upload_to_smartdash(log_dir, url, batch_size=100):
                 for k in key_value_index_popped_data:
                     key_value_index_popped_data[k]["app_name"] = name
 
-
                 try:
                     resp = requests.post(
-                        f"{url}/key_values", data=pickle.dumps(key_value_index_popped_data, protocol=pickle.HIGHEST_PROTOCOL)
+                        f"{url}/key_values",
+                        data=pickle.dumps(
+                            key_value_index_popped_data,
+                            protocol=pickle.HIGHEST_PROTOCOL,
+                        ),
                     ).json()
-
 
                     key_value_index_popped_data = None
 
                     if not resp["success"] == True:
-                        1/0
+                        1 / 0
 
                 except Exception as ex:
                     pass
@@ -103,15 +115,17 @@ def _upload_to_smartdash(log_dir, url, batch_size=100):
 
             if not n_logs_popped and not n_key_value_popped:
                 if total_n_logs_popped > 0 or total_n_key_value_popped > 0:
-                    print(f"smartlogger {name}: synced {total_n_logs_popped} logs, {total_n_key_value_popped} key values")
+                    print(
+                        f"smartlogger {name}: synced {total_n_logs_popped} logs, {total_n_key_value_popped} key values"
+                    )
+                    logs_index.vaccum()
+                    key_value_index.vaccum()
                 return
-
-
 
     while True:
         for db_file in glob(os.path.join(log_dir, "*.db")):
             upload_data(db_file, batch_size=batch_size)
-            
+
         time.sleep(int(os.getenv("SYNC_SLEEP", 10)))
 
 
@@ -119,7 +133,7 @@ class SmartLogger:
     def __init__(self, name, dir="./", log_to_console=False):
         self.name = name
         self.log_to_console = log_to_console
-        
+
         os.makedirs(dir, exist_ok=True)
         db_path = os.path.join(dir, f"{self.name}.db")
 
@@ -153,6 +167,8 @@ class SmartLogger:
         )
 
     def _log(self, id, level, *messages, stage=None, tags=[]):
+        timestamp = time.time()
+
         self.logs_index.update(
             {
                 str(uuid.uuid4()): {
@@ -160,7 +176,7 @@ class SmartLogger:
                     "stage": stage,
                     "level": level,
                     "messages": [str(m) for m in messages],
-                    "time": time.time(),
+                    "time": timestamp,
                     "tags": tags,
                 }
             }
